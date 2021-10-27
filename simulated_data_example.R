@@ -1,19 +1,28 @@
-#The required libraries are loaded----
+## Load --------------------------------------------------------------
+
+# Working directory (change)
+setwd("C:/Users/Teresa Bortolotti/Documents/R/ms-gwr-reviewed")
+
+# Libraries
 library(plot3D)
 library(GWmodel)
 library(psych)
 library(ggplot2)
 library(reshape2)
 
-#The required functions are loaded----
+# Functions
 source("functions.R")
-#We build two grids in a range from -5 to 5 with step equal to 0.5, in order to have station- and event-coordinates----
+
+## Build the grids ----------------------------------------------------
+# We build two grids in a range from -5 to 5 with step equal to 0.5,
+# in order to have station- and event-related coordinates
 inf = -5
 sup = 5
 step = 0.5
 x = s1 = s2 = e1 = e2 = seq(inf, sup, by = step)
 adj = (length(x)+1)/2
 
+# grid_e_sim is a 441x2 matrix, that for every location saves its event coordinates
 grid_e_sim = matrix(0,(length(e1)*length(e2)),2)
 for (i in 1:length(e1)){
   for (j in 1:length(e2)){
@@ -21,14 +30,17 @@ for (i in 1:length(e1)){
   }
 }
 
+# grid_s_sim is a 441x2 matrix, that for every location saves its site coordinates
 grid_s_sim = matrix(0,(length(s1)*length(s2)),2)
 for (i in 1:length(s1)){
   for (j in 1:length(s2)){
     grid_s_sim[j+(i-1)*length(s2),] = c(s1[i],s2[j])
   }
 }
+# WARNING: grid_e_sim and grid_s_sim are equal at this point
 
-#The regression coefficients are set and, in the case of spatial non-stationarity, they are also plotted----
+
+## Definition of the regression coefficients ------------------------------------
 #beta_c intercept
 beta_c_intercept_true = 8
 
