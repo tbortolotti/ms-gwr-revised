@@ -1,7 +1,13 @@
 # Installation of required R packages --------------------------------
 
 # required packages
-packages <- c("plot3D",
+packages <- c("sf",
+              "raster",
+              "rgdal",
+              "cowplot",
+              "geosphere",
+              "pracma",
+              "plot3D",
               "GWmodel",
               "psych",
               "roahd",

@@ -102,9 +102,14 @@ persp3D(s1,s2,beta_s_variable_true, colvar = beta_s_variable_true,theta=20,
         main=expression(paste(beta["1S"]))
 )
 
-#Now we have to create the dataset, along some normal distributions, considering a stationary intercept----
-#and three covariates, a stationary one, a site-dependent one and an event-dependent one. The response variables 
-#are also computed, after introducing the error term.
+## Dataset construction --------------------------------------------
+# Creation of a regression model y ~ Beta0 + Beta.c*Xc + Beta.e*Xe + Beta.s*Xs, where:
+# - Beta0 stationary intercept
+# - Beta.c stationary coefficient
+# - Beta.e event-dependent coefficient
+# - Beta.s site-dependent covariate
+# - Xc, Xe, Xs are extracted from three normal distributions
+
 #create X
 set.seed(6494)
 n = length(s1)^4
@@ -140,8 +145,9 @@ for (i in 1:n){
     epsilon[i]
 }
 
-
-#The next step is to create our simulation subset, made of 80 elements picked casually from our generated dataset----
+# Creation of the simulation subset -------------------------------------
+# The next step is to create our simulation subset, made of 80 elements picked
+# randomly from the generated dataset
 set.seed(2803)
 n_sample = 80
 lines = sample(1:n, n_sample)
@@ -159,9 +165,9 @@ for (i in 1:length(s1)){
 coords_e_sim = cbind(X_sim$E1, X_sim$E2)
 coords_s_sim = cbind(X_sim$S1, X_sim$S2)
 
-#We compute the best bandwidth for the complete model----
-#since we assume it to be the correct one; morover we see if it is better 
-#to use ESC or SEC. Notice that in this example we force bw_e = bw_s
+# Bandwith selection ------------------------------------------------
+# Selection of the best bandwith and of the best method among ESC and SEC.
+# Notice that bw_e = bw_s in this example
 bw_sec = bw_cv(0.5,3.2,0.15,80,SEC_only_calibration, "sec", X_sim$Xc_var, X_sim$Xe_var, X_sim$Xs_var, y_sim_c,
          "c", coords_e_sim, coords_s_sim)
 bw_esc = bw_cv(0.5,3.2,0.15,80,ESC_only_calibration, "esc", X_sim$Xc_var, X_sim$Xe_var, X_sim$Xs_var, y_sim_c,
