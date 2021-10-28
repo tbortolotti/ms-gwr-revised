@@ -9,6 +9,7 @@ library(GWmodel)
 library(psych)
 library(ggplot2)
 library(reshape2)
+library(pracma)
 
 # Functions
 source("functions.R")
@@ -165,13 +166,38 @@ for (i in 1:length(s1)){
 coords_e_sim = cbind(X_sim$E1, X_sim$E2)
 coords_s_sim = cbind(X_sim$S1, X_sim$S2)
 
-# Bandwith selection ------------------------------------------------
-# Selection of the best bandwith and of the best method among ESC and SEC.
+# Bandwidth selection ------------------------------------------------
+# Selection of the best bandwidth and of the best method among ESC and SEC.
 # Notice that bw_e = bw_s in this example
-bw_sec = bw_cv(0.5,3.2,0.15,80,SEC_only_calibration, "sec", X_sim$Xc_var, X_sim$Xe_var, X_sim$Xs_var, y_sim_c,
-         "c", coords_e_sim, coords_s_sim)
-bw_esc = bw_cv(0.5,3.2,0.15,80,ESC_only_calibration, "esc", X_sim$Xc_var, X_sim$Xe_var, X_sim$Xs_var, y_sim_c,
-         "c", coords_e_sim, coords_s_sim)
+
+bw_sec = bw_cv(bw_min    = 0.5,
+               bw_max    = 3.2,
+               step      = 0.15,
+               f         = 80,
+               func      = SEC_only_calibration,
+               method    = "sec",
+               Xc        = X_sim$Xc_var,
+               Xe        = X_sim$Xe_var,
+               Xs        = X_sim$Xs_var,
+               y         = y_sim_c,
+               intercept = "c",
+               utm_ev_sp = coords_e_sim,
+               utm_st_sp = coords_s_sim)
+
+bw_sec = bw_cv(bw_min    = 0.5,
+               bw_max    = 3.2,
+               step      = 0.15,
+               f         = 80,
+               func      = SEC_only_calibration,
+               method    = "esc",
+               Xc        = X_sim$Xc_var,
+               Xe        = X_sim$Xe_var,
+               Xs        = X_sim$Xs_var,
+               y         = y_sim_c,
+               intercept = "c",
+               utm_ev_sp = coords_e_sim,
+               utm_st_sp = coords_s_sim)
+
 cvsum_sec = bw_sec[[2]][,2]
 cvsum_esc = bw_esc[[2]][,2]
 bws = bw_esc[[2]][,1]
@@ -195,13 +221,28 @@ ggplot(melted, aes(x=bws, y=value, col=variable)) +
   geom_point(size = 4)
 bwe = bws = 1.25 #computed with code before, results are saved
 #Both ESC and SEC lead to bw_e = bw_s = 1.25, but ESC performs better as far as CVSS is concerned.
-#Now we proceed by carrying out the permutation test, to verify if we are considering the right model.
-#To carry out all these tests, we use the bandwidth which are found for the complete model in the previous point.
-#At first we verify if it is reasonable to introduce spatial non-stationarity----
-#OLS vs completely varying
+
+
+## Permutation tests ---------------------------------------------------
+# Now we proceed by carrying out the permutation test, to verify if we are
+# considering the right model. To carry out all these tests, we use the bandwidth
+# which is found for the complete model in the previous point.
+
+## Test the introduction of spatial non-stationarity
+# H0: at least one coefficient is stationary
+# H1: all coefficients are non-stationary
+# At first we verify if it is reasonable to introduce spatial non-stationarity
+# OLS vs completely varying
 ols = lm(y_sim_c ~ X_sim$Xc_var + X_sim$Xe_var + X_sim$Xs_var)
 bwe = bws = 1.25
-esc_only_intercept = ESC_only_constant_intercept_calibration(cbind(X_sim$Xc_var, X_sim$Xe_var), X_sim$Xs_var, y_sim_c, bwe, bws, coords_e_sim, coords_s_sim)
+esc_only_intercept = ESC_only_constant_intercept_calibration(Xe        = cbind(X_sim$Xc_var, X_sim$Xe_var),
+                                                             Xs        = X_sim$Xs_var,
+                                                             y         = y_sim_c,
+                                                             bwe       = bwe,
+                                                             bws       = bws,
+                                                             utm_ev_sp = coords_e_sim,
+                                                             utm_st_sp = coords_s_sim)
+
 #compute R(H0)
 X = cbind(rep(1,n_sample), X_sim$Xc_var, X_sim$Xe_var, X_sim$Xs_var)
 I = diag(1,n_sample)
@@ -227,8 +268,9 @@ for (i in 1:n_perm){
 p = sum(t_stat>as.numeric(T0))/n_perm
 p
 
-#Then we check if it is correct to consider Xc as constant and Xe and Xs as spatially varying----
-#check if Xc is constant
+## Stationarity of the coefficients tested one-at-a-time
+
+# Check if Beta.c is constant
 #calibrate models under H0 and H1
 esc = ESC_only_calibration(X_sim$Xc_var, X_sim$Xe_var, X_sim$Xs_var, y_sim_c, "c", bwe, bws, coords_e_sim, coords_s_sim)
 esc_only_intercept = ESC_only_constant_intercept_calibration(cbind(X_sim$Xc_var, X_sim$Xe_var), X_sim$Xs_var, y_sim_c, bwe, bws, coords_e_sim, coords_s_sim)
@@ -258,7 +300,7 @@ for (i in 1:n_perm){
 p_xc = sum(t_stat>as.numeric(T0))/n_perm
 p_xc
 
-#check if Xe is constant
+# Check if Beta.e is constant
 #calibrate models under H0 and H1
 esc = ESC_only_calibration(X_sim$Xe_var, X_sim$Xc_var, X_sim$Xs_var, y_sim_c, "c", bwe, bws, coords_e_sim, coords_s_sim)
 esc_only_intercept = ESC_only_constant_intercept_calibration(cbind(X_sim$Xe_var, X_sim$Xc_var), X_sim$Xs_var, y_sim_c, bwe, bws, coords_e_sim, coords_s_sim)
@@ -287,7 +329,7 @@ for (i in 1:n_perm){
 p_xe = sum(t_stat>as.numeric(T0))/n_perm
 p_xe
 
-#check if Xs is constant
+# Check if Beta.s is constant
 #calibrate models under H0 and H1
 esc = mixed_SC_calibration(X_sim$Xs_var, cbind(X_sim$Xe_var, X_sim$Xc_var), y_sim_c, 1.25, "c", coords_e_sim)
 esc_only_intercept = ESC_only_constant_intercept_calibration(cbind(X_sim$Xe_var, X_sim$Xc_var), X_sim$Xs_var, y_sim_c, bwe, bws, coords_e_sim, coords_s_sim)
@@ -317,8 +359,8 @@ for (i in 1:n_perm){
 p_xs = sum(t_stat>as.numeric(T0))/n_perm
 p_xs
 
-#The next step is to check if the constant terms can be considered as null----
-#check if the intercept is null
+## Significance of the stationary coefficients
+# Check if Beta0 is null
 #calibrate models under H0 and H1
 esc_null = mixed_SC_no_intercept_calibration(X_sim$Xc_var, X_sim$Xs_var, y_sim_c, 1.25, coords_s_sim)
 esc = ESC_only_calibration(X_sim$Xc_var, X_sim$Xe_var, X_sim$Xs_var, y_sim_c, "c", bwe, bws, coords_e_sim, coords_s_sim)
@@ -348,7 +390,7 @@ for (i in 1:n_perm){
 p_intercept_null = sum(t_stat>as.numeric(T0))/n_perm
 p_intercept_null
 
-#check if Xc is null
+# Check if Beta.c is null
 #calibrate models under H0 and H1
 esc_null = mixed_SC_no_intercept_calibration(rep(1,length(X_sim$Xe_var)), X_sim$Xe_var, y_sim_c, 1.25, coords_e_sim)
 esc = ESC_only_calibration(X_sim$Xc_var, X_sim$Xe_var, X_sim$Xs_var, y_sim_c, "c", bwe, bws, coords_e_sim, coords_s_sim)
@@ -379,14 +421,18 @@ for (i in 1:n_perm){
 p_xc_null = sum(t_stat>as.numeric(T0))/n_perm
 p_xc_null
 
-#We can now execute the whole calibration, using the previously obtained results to set parameters and methods----
+## Calibration ------------------------------------------------------------
+# We can now execute the whole calibration, using the previously obtained results
+# to set parameters and methods
 bwe = bws = 1.25
 esc = ESC_general(X_sim$Xc_var, X_sim$Xe_var, X_sim$Xs_var, y_sim_c, "c", bwe, bws, coords_e_sim, coords_s_sim, as.matrix(grid_sim))
 
 betas_c = esc$beta_c
 betas_c
 
-#The spatially varying coefficients can be graphically compared with the true ones----
+## Comparison of estimated coefficients with their true values ------------
+# The spatially varying coefficients can be graphically compared with the
+# true ones
 beta_s = esc$beta_s
 beta_e = esc$beta_e
 
@@ -466,7 +512,8 @@ persp3D(s1,s2,beta_s_grid, colvar = beta_s_grid,theta=30,
         main=expression(paste(beta["1S, EMGWR"]))
 )
 
-#Finally we can compute R^2_{adj}----
+
+## Computation of R^2_{adj} ---------------------------------------
 I= diag(1,n_sample)
 B = esc$B
 Xcc = cbind(rep(1,dim(X_sim)[1]), X_sim$Xc_var)

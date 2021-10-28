@@ -18,7 +18,7 @@
 #' 
 #' @return a two-element list with the following components:
 #'         best_bw:    value of the best selected bandwidth
-#'         cvsum:      
+#'         cvsum:      for each bandwidth, it is the sum, over all train-test partitions, of the RSS
 #' 
 
 bw_cv = function(bw_min, bw_max, step, f, func, method, Xc, Xe, Xs,
