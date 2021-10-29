@@ -191,14 +191,14 @@ regs = list(b1 = b1,
             f1 = f1,
             f2 = f2,
             k  = k)
-p_one_at_a_time = stationarity_check(coef_to_check = coef_to_check,
+p_stationarity = stationarity_check(coef_to_check = coef_to_check,
                                      regs          = regs,
                                      y             = y,
                                      bwe           = bwe,
                                      bws           = bws,
                                      utm_ev_sp     = utm_ev_sp,
                                      utm_st_sp     = utm_st_sp)
-p_one_at_a_time
+p_stationarity
 
 ## Check jointly the stationarity of regressors that are found to be stationary in the
 ## previous tests -----------------------------------------------------------------------
@@ -238,3 +238,158 @@ for (i in 1:n_perm){
 p_cumulative_stationary = sum(t_stat>as.numeric(T0))/n_perm
 p_cumulative_stationary
 
+## Significance of constant coefficients ------------------------------------------
+# H0: a constant coefficient is null
+# H1: a constant coefficient is different from zero
+# Note that: as R(H1) one may take R(H1) from the previous point
+source("functions/significance_check.R")
+
+Xc = cbind(b1,b2,f1,f2,c1)
+names_Xc = c("b1","b2","f1","f2","c1")
+Xe = cbind(c2,c3)
+Xs = k
+
+# NT: you may change the three matrices above accordingly to the results of the
+# your stationarity checks
+
+# WARNING: I don't know what happens if there is no coefficient varying with
+#          site or with event (i.e. either Xe or Xs are null)
+
+coef_to_check = "intercept" #change it among all regs that are found constant
+
+p_significance = significance_check(coef_to_check = coef_to_check,
+                                    names_Xc      = names_Xc,
+                                    Xe            = Xe,
+                                    Xs            = Xs,
+                                    y             = y,
+                                    bwe           = bwe,
+                                    bws           = bws,
+                                    utm_ev_sp     = utm_ev_sp,
+                                    utm_st_sp     = utm_st_sp)
+p_significance
+
+
+## GCV comparison --------------------------------------------------------------
+# Comparison of the GCV values obtained using SEC and ESC
+
+Xc = cbind(b1,b2,f1,f2,c1)
+Xe = cbind(c2,c3)
+Xs = k
+
+gcvESC = gcv_mei_only_one(bwe,bws,ESC_only_calibration, Xc, Xe, Xs, y, "c", coordinates(utm_ev_sp),
+                          coordinates(utm_st_sp))
+print("ESC: ", gcvESC)
+
+gcvSEC = gcv_mei_only_one(bwe,bws,SEC_only_calibration, Xc, Xe, Xs, y, "c", coordinates(utm_ev_sp),
+                          coordinates(utm_st_sp))
+print("SEC: ", gcvSEC)
+
+## Computation of $R^2_{adj}$ ---------------------------------------------------
+
+Xc = cbind(b1,b2,f1,f2,c1)
+Xe = cbind(c2,c3)
+Xs = k
+sec = SEC_only_calibration(Xc, Xe, Xs, y, "c", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp))
+n_sample = length(y)
+I = diag(1,n_sample)
+B = sec$B
+Xcc = cbind(rep(1,n_sample), Xc)
+H = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B #this can be saved as                                                                                      #"H_hat_pga.RData"
+epsilon= (I-H)%*%y
+delta1 = n_sample-2*tr(H)+tr(t(H)%*%H) #this can be saved as "delta1_pga.RData"
+delta2 = tr((t(I-H)%*%(I-H)) %*% (t(I-H)%*%(I-H))) #this can be saved as "delta1_pga.RData"
+rss = sum(epsilon^2)
+sigma2hat = rss/delta1
+tss = sum((H%*%y-mean(y))^2)
+sqrt(sigma2hat)
+R2 = 1-rss/tss
+R2adj = 1-(1-R2)*(n_sample-1)/delta1
+R2adj
+
+## Calibration  ------------------------------------------
+# Computation of the regression coefficients
+  
+result = SEC_grid_creation(Xc, Xe, Xs, y,"c", bwe, bws, coordinates(utm_ev_sp),
+                           coordinates(utm_st_sp), coords_utm, sec)
+beta_const = result$beta_c
+
+beta_k = t(result$beta_s)
+beta_k_coord = cbind(coords_utm, beta_k)
+beta_k_coord = as.data.frame(beta_k_coord)
+
+beta_c2 = result$beta_e[1,]
+beta_c2_coord = cbind(coords_utm, beta_c2)
+beta_c2_coord = as.data.frame(beta_c2_coord)
+
+beta_c3 = result$beta_e[2,]
+beta_c3_coord = cbind(coords_utm, beta_c3)
+beta_c3_coord = as.data.frame(beta_c3_coord)
+
+## PLOTS ---------------------------------------------------------
+# Plots of non-stationary regression coefficients
+ggplot() + 
+  geom_tile(beta_k_coord, mapping = aes(x=x1, y=x2, fill=beta_k))+
+  scale_fill_gradientn(colours = c("darkblue", "dodgerblue1", "cadetblue2", "white"), name = "k"
+                       ,limits = c(-1,0), breaks = c(-1, -0.5,0)
+  )+
+  geom_sf(data = shape_utm_no_lamp, size = 1.6, color = "black", fill = NA )+
+  geom_point(data = utm_st, aes(x=longitude_st, y=latitude_st), fill= 'firebrick3',
+             size = 1, shape = 21, stroke = 0.7)+
+  theme(axis.text=element_text(size=15, colour = "black"),
+        axis.title=element_blank(),
+        legend.text=element_text(size=20, colour = "black"),
+        plot.title = element_blank(),
+        axis.ticks=element_blank(),
+        legend.title = element_text(size=20, colour = "black"),
+        panel.background = element_rect(fill = "lightcyan2", colour = "skyblue3",
+                                        size = 2, linetype = "solid"),
+        panel.grid = element_line(size = 0.25, linetype = 'solid',
+                                  colour = "aliceblue"))
+
+ggplot() + 
+  geom_tile(beta_c2_coord, mapping = aes(x=x1, y=x2, fill=beta_c2))+
+  #coord_sf()+
+  scale_fill_gradientn(colours = c("darkblue", "dodgerblue1", "cadetblue2", "white")
+                       , name = expression(paste(c[2]))
+                       ,limits = c(-1.8, -1), breaks = c(-1.8, -1.4, -1),
+                       labels = c(-1.8, -1.4, -1))+
+  geom_sf(data = shape_utm_no_lamp, size = 1.6, color = "black", fill = NA)+
+  geom_point(data = utm_ev, aes(x=longitude_ev, y=latitude_ev), fill= 'firebrick3',
+             size = 3, shape = 21, stroke = 1.5)+
+  theme(axis.text=element_text(size=15, colour = "black"),
+        axis.title=element_blank(),
+        legend.text=element_text(size=20, colour = "black"),
+        plot.title = element_blank(),
+        axis.ticks=element_blank(),
+        legend.title = element_text(size=20, colour = "black"),
+        panel.background = element_rect(fill = "lightcyan2", colour = "skyblue3",
+                                        size = 2, linetype = "solid"),
+        panel.grid = element_line(size = 0.25, linetype = 'solid',
+                                  colour = "aliceblue"))
+
+beta_c3_bis = beta_c3
+beta_c3_bis[beta_c3_bis<(-0.009)]=-0.009
+beta_c3_coord = cbind(coords_utm, beta_c3)
+beta_c3_coord = as.data.frame(beta_c3_coord)
+beta_c3_bis_coord = cbind(coords_utm, beta_c3_bis)
+beta_c3_bis_coord = as.data.frame(beta_c3_bis_coord)
+
+ggplot() + 
+  geom_tile(beta_c3_bis_coord, mapping = aes(x=x1, y=x2, fill=beta_c3_bis))+
+  scale_fill_gradientn(colours = c("darkblue", "dodgerblue1", "cadetblue2", "white")
+                       , name = expression(paste(c[3]))
+                       ,limits = c(-0.009, 0.003), breaks = c(-0.009, -0.006, -0.003, 0, 0.003),
+                       labels = c("<-0.009", -0.006, -0.003, 0, 0.003))+
+  geom_sf(data = shape_utm_no_lamp, size = 1.6, color = "black", fill = NA)+
+  geom_point(data = utm_ev, aes(x=longitude_ev, y=latitude_ev), fill= 'firebrick3',
+             size = 3, shape = 21, stroke = 1.5)+
+  theme(axis.text=element_text(size=15, colour = "black"),
+        axis.title=element_blank(),
+        legend.text=element_text(size=20, colour = "black"),
+        plot.title = element_blank(),
+        axis.ticks=element_blank(),
+        legend.title = element_text(size=20, colour = "black"),
+        panel.background = element_rect(fill = "lightcyan2", colour = "skyblue3",
+                                        size = 2, linetype = "solid"),
+        panel.grid = element_line(size = 0.25, linetype = 'solid',
+                                  colour = "aliceblue"))
