@@ -11,7 +11,7 @@ The purpose of a revised version of the code is to provide a user-friendly tool 
 ## Structure of the repository
 The repository is composed as follows:
 * `functions`: Folder containing all functions used in the analysis, both for the simulation study and the case study (se voglio scrivere in grassetto **è così**)
-* `simulated_data_example.R`: R-script with all the steps for running the Blocked Gibbs sampler
+* `simulated_data_example.R`: File containing the simulation study conducted by Luca Caramenti
 * `msgwr_seismological_data_notebook.nb.html`: report of the case study analysis developed by Luca Caramenti
 
 ### Notebook for the application to Italian seismic data
