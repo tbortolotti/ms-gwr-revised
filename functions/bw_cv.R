@@ -13,7 +13,7 @@
 #' @param Xc, Xe, Xs:  predictor variables
 #' @param y:           response variable
 #' @param intercept:   either "c" (constant), "e" (event-dependent), "s" (site-dependent)
-#' @param utm_ev_s:    utm coordinates of the events
+#' @param utm_ev_sp:    utm coordinates of the events
 #' @param utm_st_sp:   utm coordinates of the site   
 #' 
 #' @return a two-element list with the following components:

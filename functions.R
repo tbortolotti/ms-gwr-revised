@@ -7,13 +7,13 @@ bw_cv = function(bw_min, bw_max, step, f, func, method, Xc, Xe, Xs, y,intercept,
     bandwidths = c(bandwidths, bw_max)
   }
   cvss = matrix(0,length(bandwidths), f)
-  batch = floor(length(y)/f) #cardinality of each batch
+  batch = floor(length(y)/f)
   rest = length(y) - batch * f
   rest_const = rest
-  for (w in 1:length(bandwidths)){ #w=1
+  for (w in 1:length(bandwidths)){
     i = bandwidths[w]
     print(c("Bandwidth", i))
-    for (b in 1:f){ #b=1
+    for (b in 1:f){
       if (rest >0){
         batch_t = batch + 1
         beginning = batch_t*(b-1)+1
@@ -23,7 +23,7 @@ bw_cv = function(bw_min, bw_max, step, f, func, method, Xc, Xe, Xs, y,intercept,
         beginning = rest_const + batch*(b-1) + 1 #(batch+1)*rest_const + batch*(b-1-rest_const)+1 
         end = rest_const + batch*b
       }
-      #split in train and test sets
+      #create subsets
       Xc_temp = as.matrix(Xc)[-(beginning:end),]
       Xe_temp = as.matrix(Xe)[-(beginning:end),]
       Xs_temp = as.matrix(Xs)[-(beginning:end),]
@@ -44,31 +44,19 @@ bw_cv = function(bw_min, bw_max, step, f, func, method, Xc, Xe, Xs, y,intercept,
         pcoords = cbind(coords_e_test, coords_s_test)
       }
       
-      temp = func(Xc        = Xc_temp,
-                  Xe        = Xe_temp,
-                  Xs        = Xs_temp,
-                  y         = y_temp,
-                  intercept = intercept,
-                  bwe       = i,
-                  bws       = i,
-                  utm_ev_sp = coords_e_temp,
-                  utm_st_sp = coords_s_temp)
+      temp = func(Xc_temp, Xe_temp, Xs_temp, y_temp, intercept,
+                  i, i, coords_e_temp, coords_s_temp)
+      if (method == "sec"){
+        prediction = emgwr_prediction_points_no_param(Xc_temp, Xe_temp, Xs_temp, y_temp, temp, "sec", i, i,
+                                             coords_e_temp, coords_s_temp, Xc_test, Xe_test, Xs_test,
+                                             pcoords, 0.05)
+      } else {
+        prediction = emgwr_prediction_points_no_param(Xc_temp, Xe_temp, Xs_temp, y_temp, temp, "esc", i, i,
+                                             coords_e_temp, coords_s_temp, Xc_test, Xe_test, Xs_test,
+                                             pcoords, 0.05)
+      }
       
-      prediction = emgwr_prediction_points_no_param(Xc        = Xc_temp,
-                                                    Xe        = Xe_temp,
-                                                    Xs        = Xs_temp,
-                                                    y         = y_temp,
-                                                    emgwr     = temp,
-                                                    method    = method,
-                                                    bwe       = i,
-                                                    bws       = i,
-                                                    utm_ev_sp = coords_e_temp,
-                                                    utm_st_sp = coords_s_temp,
-                                                    pc        = Xc_test,
-                                                    pe        = Xe_test,
-                                                    ps        = Xs_test,
-                                                    pcoords   = pcoords,
-                                                    alfa     = 0.05)
+      
       
       #compute residuals
       y_res = rep(0,length(y_test))
@@ -889,7 +877,7 @@ emgwr_prediction_points = function(Xc, Xe, Xs, y, emgwr, H_hat, delta1, delta2, 
 }
 #emgwr_prediction_points_no_param----
 #prediction for points with their coordinates without already computed delta1, delta2 and H_hat
-emgwr_prediction_points_no_param = function(Xc, Xe, Xs, y, emgwr, method, bwe, bws, utm_ev_sp, utm_st_sp, pc, pe, ps, pcoords, alfa){
+emgwr_prediction_points_no_param = function(Xc, Xe, Xs, y, emgwr, method, bwe, bws, utm_ev_sp, utm_st_sp, pc, pe, ps, pcoords, alfa, n_sample){
   
   N = length(y)
   K = dim(pcoords)[1]
@@ -918,7 +906,7 @@ emgwr_prediction_points_no_param = function(Xc, Xe, Xs, y, emgwr, method, bwe, b
   
   H_hat = I - B + B %*% Xc %*% solve(t(Xc)%*%t(B)%*%B%*%Xc) %*% t(Xc) %*% t(B)%*% B
   res = (I-H_hat)%*%y
-  delta1 = N-2*tr(H_hat)+tr(t(H_hat)%*%H_hat)
+  delta1 = n_sample-2*tr(H_hat)+tr(t(H_hat)%*%H_hat)
   delta2 = tr((t(I-H_hat)%*%(I-H_hat)) %*% (t(I-H_hat)%*%(I-H_hat)))
   rss = sum(res^2)
   sigma2hat = rss/delta1
@@ -1282,9 +1270,11 @@ SEC_only_calibration = function(Xc, Xe, Xs, y,intercept, bwe, bws, utm_ev_sp, ut
   N = length(y) #y vector of responses
   if (intercept == "c"){
     Xc = cbind(rep(1,N), Xc)
-  } else if (intercept == "e"){
+  }
+  else if (intercept == "e"){
     Xe = cbind(rep(1,N), Xe)
-  } else if (intercept == "s"){
+  }
+  else if (intercept == "s"){
     Xs = cbind(rep(1,N), Xs)
   }
   
@@ -1304,19 +1294,25 @@ SEC_only_calibration = function(Xc, Xe, Xs, y,intercept, bwe, bws, utm_ev_sp, ut
   Hs = matrix(0,N,N)
   
   #create Hs
+  pb = progress_bar$new(total=N, format = "  computing [:bar] :percent eta: :eta")
+  pb$tick(0)
   for (i in 1:N){
     Ws = diag(gauss_kernel(dist_s_sim_cal[,i],bws))
     As = (solve((t(Xs)%*%Ws%*%Xs))) %*% t(Xs) %*% Ws
     Hs[i,] = Xs[i,] %*% As
-    print(c("Hs",i))
+    #print(c("Hs",i))
+    pb$tick()
   }
   
   #create He
+  pb = progress_bar$new(total=N, format = "  computing [:bar] :percent eta: :eta")
+  pb$tick(0)
   for (i in 1:N){
     We = diag(gauss_kernel(dist_e_sim_cal[,i],bwe))
     Ae = (solve((t(Xe)%*%(t((I-Hs)))%*%We%*%(I-Hs)%*%Xe))) %*% t(Xe) %*% (t((I-Hs))) %*% We %*% (I-Hs)
     He[i,] = Xe[i,] %*% Ae
-    print(c("He",i))
+    #print(c("He",i))
+    pb$tick()
   }
   
   #create B
@@ -1353,19 +1349,25 @@ SEC_only_constant_intercept_calibration = function(Xe, Xs, y, bwe, bws, utm_ev_s
   Hs = matrix(0,N,N)
   
   #create Hs
+  pb = progress_bar$new(total=N, format = "  computing [:bar] :percent eta: :eta")
+  pb$tick(0)
   for (i in 1:N){
     Ws = diag(gauss_kernel(dist_s_sim_cal[,i],bws))
     As = (solve((t(Xs)%*%Ws%*%Xs))) %*% t(Xs) %*% Ws
     Hs[i,] = Xs[i,] %*% As
-    print(c("Hs",i))
+    #print(c("Hs",i))
+    pb$tick()
   }
   
   #create He
+  pb = progress_bar$new(total=N, format = "  computing [:bar] :percent eta: :eta")
+  pb$tick(0)
   for (i in 1:N){
     We = diag(gauss_kernel(dist_e_sim_cal[,i],bwe))
     Ae = (solve((t(Xe)%*%(t((I-Hs)))%*%We%*%(I-Hs)%*%Xe))) %*% t(Xe) %*% (t((I-Hs))) %*% We %*% (I-Hs)
     He[i,] = Xe[i,] %*% Ae
-    print(c("He",i))
+    #print(c("He",i))
+    pb$tick()
   }
   
   #create B
@@ -1399,19 +1401,25 @@ SEC_no_intercept_calibration = function(Xc, Xe, Xs, y, bwe, bws, utm_ev_sp, utm_
   Hs = matrix(0,N,N)
   
   #create Hs
+  pb = progress_bar$new(total=N, format = "  computing [:bar] :percent eta: :eta")
+  pb$tick(0)
   for (i in 1:N){
     Ws = diag(gauss_kernel(dist_s_sim_cal[,i],bws))
     As = (solve((t(Xs)%*%Ws%*%Xs))) %*% t(Xs) %*% Ws
     Hs[i,] = Xs[i,] %*% As
-    print(c("Hs",i))
+    #print(c("Hs",i))
+    pb$tick()
   }
   
   #create He
+  pb = progress_bar$new(total=N, format = "  computing [:bar] :percent eta: :eta")
+  pb$tick(0)
   for (i in 1:N){
     We = diag(gauss_kernel(dist_e_sim_cal[,i],bwe))
     Ae = (solve((t(Xe)%*%(t((I-Hs)))%*%We%*%(I-Hs)%*%Xe))) %*% t(Xe) %*% (t((I-Hs))) %*% We %*% (I-Hs)
     He[i,] = Xe[i,] %*% Ae
-    print(c("He",i))
+    #print(c("He",i))
+    pb$tick()
   }
   
   #create B
