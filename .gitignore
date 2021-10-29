@@ -2,6 +2,6 @@ lucares
 res
 RH1_only_intercept_rotD50pga.RData
 RH1_stationary_rotD50pga.RData
-msgwr_seismological_data_notebook.R
+#msgwr_seismological_data_notebook.Rmd
 
 .Rhistory
