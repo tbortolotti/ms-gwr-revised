@@ -15,17 +15,29 @@ The repository is composed as follows:
 * `data_dir`: Folder containing the data of the case study. In particular, `confini_ut33.shp` is the shape file for the Italian territory for which the analysis is performed, and `italian_data_pga.RData` contains the full dataset for the PGA measurements.
 * `functions`: Folder containing all functions used in the analysis, both for the simulation study and the case study. Each function in the folder contains a brief description of its usage and of its input and return parameters.
 
-### Notebook for the application to Italian seismic data
+## Analysis of Italian seismic data
+The revised version of the code focuses mainly on the application of MS GWR for the analysis of Italian seismic data. File `main.R` builds the optimal model for the PGA (Peak Ground Acceleration), conditionally on seismic parameters of magnitude (mag), shear-wave velocity (vs30), Joyner_Boore distance (JB_complete) and style-of-faulting (fm_type_code). Included in the analysis are the longitude and the latitude of the seismic events and of the sites of registration of the seismic waves.
+
+The course-of-action of the analysis may be sketched as follows:
+
+0. Preprocessing: Removal of undesired sites and events and dataset building.
+1. Selection of the optimal bandwidth for event- and site-related gaussian kernels.
+2. Permutation tests for assessing the non-stationarity of regression coefficients.
+3. Permutation tests for the significance of constant regression coefficients.
+4. GCV comparison between SEC and ESC algorithms, to see which algorithm performs better with the data.
+5. Computation of R<sup>2</sup><sub>adj</sub>.
+6. Full calibration of the model and computation of the regression coefficients over a spatial grid of interest.
+
+The procedure closely follows what is reported in
+
 [Report of MS GWR application to Italian seismic data](https://htmlpreview.github.io/?https://github.com/lucaramenti/ms-gwr/blob/main/msgwr_seismological_data_notebook.nb.html)
 
-This is a useful notebook reporting the entire procedure applied by Luca Caramenti to the dataset taken from Engineering Strong Motion database
+, which is a useful notebook reporting the analysis of Luca Caramenti on data taken from Engineering Strong Motion database
 > Luzi, L., G. Lanzano, C. Felicetta, M.C. D'Amico, E. Russo, S. Sgobba, F. Pacor and ORFEUS Working Group 5. Engineering strong motion database (ESM), 2020. URL: [https://esm-db.eu](https://esm-db.eu).
 
-This procedure is 
-
-### Installation
+## Installation
 
 Run file `package_install.R` to have an automatic installation of the required R packages.
 
-## Author
+### Author
 Teresa Bortolotti
