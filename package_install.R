@@ -1,19 +1,22 @@
-# Installation of required R packages --------------------------------
+#'
+#' Installation of the required R packages
+#'
+
 
 # required packages
 packages <- c("sf",
               "raster",
               "rgdal",
+              "GWmodel",
               "cowplot",
               "geosphere",
-              "pracma",
-              "progress",
-              "plot3D",
-              "GWmodel",
               "psych",
+              "pracma",
+              "reshape2",
+              "plot3D",
+              "progress",
               "roahd",
-              "ggplot2",
-              "reshape2")
+              "ggplot2")
 
 # new packages
 new_packages  <- packages[!(packages %in% installed.packages()[,"Package"])] 

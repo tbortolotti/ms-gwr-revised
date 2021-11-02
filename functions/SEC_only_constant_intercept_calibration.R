@@ -5,7 +5,9 @@
 #' using the SEC algorithm. In the practice, it builds the matrices
 #' He, Hs and B that are used to obtain the estimates of the regression coefficients.
 #'
-#' @param Xe, Xs:      predictor variables
+#' @param Xc:          matrix of constant predictor variables
+#' @param Xe:          matrix of event-varying predictor variables
+#' @param Xs:          matrix of site-varying predictor variables
 #' @param y:           response variable
 #' @param bwe:         bandwidth for event
 #' @param bws:         bandwidth for site

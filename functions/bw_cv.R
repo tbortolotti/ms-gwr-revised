@@ -10,7 +10,9 @@
 #' @param f:           number of cross-validation folds
 #' @param func:        one of the two functions: SEC_only_calibration/ESC_only_calibration
 #' @param method:      either "sec" or "esc" (must be in accordance to func)
-#' @param Xc, Xe, Xs:  predictor variables
+#' @param Xc:          matrix of constant predictor variables
+#' @param Xe:          matrix of event-varying predictor variables
+#' @param Xs:          matrix of site-varying predictor variables
 #' @param y:           response variable
 #' @param intercept:   either "c" (constant), "e" (event-dependent), "s" (site-dependent)
 #' @param utm_ev_sp:    utm coordinates of the events

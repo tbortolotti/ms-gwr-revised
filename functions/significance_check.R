@@ -1,3 +1,34 @@
+#'
+#' Check of significance of the constant coefficients
+#'
+#' This function performs a non-parametric test to check whether a certain
+#' regression coefficient, previously found to be constant, is equal to zero
+#' or different from zero. In order to do so, two spatially varying regression
+#' models are compared, one containing the coefficient to be checked-out and the
+#' other one not containing it.
+#' 
+#' The formulation of the test is the following:
+#' Let beta be a regression coefficient found to be non-spatially varying.
+#' H0: beta  = 0
+#' H1: beta != 0 
+#'
+#' @param coef_to_check:   name of the coefficient to be checked
+#'                         (e.g. "intercept", "b1")
+#' @param names_Xc         vector of names of the constant coefficients of the model              
+#' @param Xc:              matrix of constant predictor variables
+#' @param Xe:              matrix of event-varying predictor variables
+#' @param Xs:              matrix of site-varying predictor variables
+#' @param y:               response variable
+#' @param bwe:             bandwidth for event
+#' @param bws:             bandwidth for site
+#' @param utm_ev_sp:       utm coordinates of the events
+#' @param utm_st_sp:       utm coordinates of the site   
+#' 
+#' @return p:              p-value of the non-parametric test
+#' 
+
+
+
 significance_check <- function(coef_to_check, names_Xc, Xc, Xe, Xs, y, bwe,
                                bws, utm_ev_sp, utm_st_sp)
 {

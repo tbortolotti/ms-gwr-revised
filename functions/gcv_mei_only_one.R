@@ -9,7 +9,9 @@
 #' @param bwe:         bandwidth for event
 #' @param bws:         bandwidth for site
 #' @param func:        one of the two functions: SEC_only_calibration/ESC_only_calibration
-#' @param Xc, Xe, Xs:  predictor variables
+#' @param Xc:          matrix of constant predictor variables
+#' @param Xe:          matrix of event-varying predictor variables
+#' @param Xs:          matrix of site-varying predictor variables
 #' @param y:           response variable
 #' @param intercept:   "c" (constant)
 #' @param utm_ev_sp:    utm coordinates of the events

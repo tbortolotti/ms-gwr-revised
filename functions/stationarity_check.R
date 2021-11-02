@@ -1,3 +1,28 @@
+#'
+#' Check of stationarity of regression coefficients
+#'
+#' This function performs a non-parametric test to check whether a certain
+#' regression coefficient is stationary over space, i.e. does not depend
+#' neither on event coordinates nor on site coordinates.
+#' 
+#' The formulation of the test is the following:
+#' Let beta be a regression coefficient.
+#' H0: beta does not depend on event or site coordinates
+#' H1: beta is spatially varying
+#'
+#' @param coef_to_check:   name of the coefficient to be checked out
+#'                         (e.g. "b1", "b2")
+#' @param regs             matrix containing the predictor variables
+#' @param y:               response variable
+#' @param bwe:             bandwidth for event
+#' @param bws:             bandwidth for site
+#' @param utm_ev_sp:       utm coordinates of the events
+#' @param utm_st_sp:       utm coordinates of the site   
+#' 
+#' @return p:              p-value of the non-parametric test
+#' 
+
+
 stationarity_check <- function(coef_to_check, regs, y, bwe, bws, utm_ev_sp, utm_st_sp)
 {
   ## coefs

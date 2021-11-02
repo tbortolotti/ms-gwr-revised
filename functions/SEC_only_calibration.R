@@ -4,7 +4,9 @@
 #' This function builds matrices He, Hs and B that are used for the MS-GWR
 #' via SEC algorithm
 #'
-#' @param Xc, Xe, Xs:  predictor variables
+#' @param Xc:          matrix of constant predictor variables
+#' @param Xe:          matrix of event-varying predictor variables
+#' @param Xs:          matrix of site-varying predictor variables
 #' @param y:           response variable
 #' @param intercept:   either "c" (constant), "e" (event-dependent), "s" (site-dependent)
 #' @param bwe:         bandwidth for event
