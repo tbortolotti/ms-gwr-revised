@@ -28,7 +28,7 @@ cat("\014")
 dataset = readRDS("data_dir/italian_data_pga.RData")
 
 # Load functions
-#source("functions.R")
+#source("functions/functions.R")
 source("functions/gcv_mei_only_one.R")
 source("functions/SEC_only_calibration.R")
 source("functions/ESC_only_calibration.R")
