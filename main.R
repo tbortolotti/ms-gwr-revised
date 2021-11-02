@@ -1,6 +1,6 @@
 
 # Working directory (change)
-setwd("C:/Users/Teresa Bortolotti/Documents/R/ms-gwr-reviewed")
+setwd("C:/Users/Teresa Bortolotti/Documents/R/ms-gwr-revised")
 
 source('package_install.R')
 
