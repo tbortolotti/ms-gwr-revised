@@ -44,24 +44,26 @@ SEC_only_constant_intercept_calibration = function(Xe, Xs, y, bwe, bws, utm_ev_s
   
   #create Hs
   print("Create Hs")
-  pb <- progressBar(0, max = N, initial = 0, style = "ETA")
+  pb = progress_bar$new(total=N, format = "  computing [:bar] :percent eta: :eta")
+  pb$tick(0)
   for (i in 1:N){
     Ws = diag(gauss_kernel(dist_s_sim_cal[,i],bws))
     As = (solve((t(Xs)%*%Ws%*%Xs))) %*% t(Xs) %*% Ws
     Hs[i,] = Xs[i,] %*% As
     #print(c("Hs",i))
-    setTxtProgressBar(pb, i)
+    pb$tick()
   }
   
   #create He
   print("Create He")
-  pb <- progressBar(0, max = N, initial = 0, style = "ETA")
+  pb = progress_bar$new(total=N, format = "  computing [:bar] :percent eta: :eta")
+  pb$tick(0)
   for (i in 1:N){
     We = diag(gauss_kernel(dist_e_sim_cal[,i],bwe))
     Ae = (solve((t(Xe)%*%(t((I-Hs)))%*%We%*%(I-Hs)%*%Xe))) %*% t(Xe) %*% (t((I-Hs))) %*% We %*% (I-Hs)
     He[i,] = Xe[i,] %*% Ae
     #print(c("He",i))
-    setTxtProgressBar(pb, i)
+    pb$tick()
   }
   
   #create B

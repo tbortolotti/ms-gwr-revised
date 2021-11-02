@@ -24,8 +24,20 @@ graphics.off()
 cat("\014")
 
 ## Load -------------------------------------------------
+# Load data
 dataset = readRDS("italian_data_pga.RData")
-source("functions.R")
+
+# Load functions
+#source("functions.R")
+source("functions/gcv_mei_only_one.R")
+source("functions/SEC_only_calibration.R")
+source("functions/ESC_only_calibration.R")
+source("functions/SEC_only_constant_intercept_calibration.R")
+source("functions/SEC_no_intercept_calibration.R")
+source("functions/SEC_grid_creation.R")
+source("functions/gauss_kernel.R")
+source("functions/stationarity_check.R")
+source("functions/significance_check.R")
 
 # shapefiles
 shape_utm = st_read('confini_ut33.shp')
@@ -103,8 +115,9 @@ colnames(bw_table) = bws_tot
 
 for (i in 1:n_bwe){ #i=1
   for (j in 1:n_bws){ # j=1
-    bandwidth = gcv_mei_only_one(bwe       = i,
-                                 bws       = j,
+    print(paste0("Bandwidth event: ", bwe_tot[i], " / Bandwidth site: ", bws_tot[j]))
+    bandwidth = gcv_mei_only_one(bwe       = bwe_tot[i],
+                                 bws       = bws_tot[j],
                                  func      = SEC_only_calibration,
                                  Xc        = Xc,
                                  Xe        = Xe,
@@ -146,7 +159,7 @@ End.Time <- Sys.time()
 ## Run-time:
 round(End.Time - Start.Time, 2)
 
-save(only_intercept, file="res/only_intercept.RData")
+#save(only_intercept, file="res/only_intercept.RData")
 load("res/only_intercept.RData")
 
 n_sample = length(y)
@@ -172,7 +185,6 @@ n_perm = 1000
 t_stat = rep(0,n_perm)
 print("Permutations")
 pb = progress_bar$new(total=n_perm, format = "  computing [:bar] :percent eta: :eta")
-pb$tick(0)
 for (i in 1:n_perm){
   eps_star = sample(epsilon)
   y_star = Hols %*% y + eps_star
@@ -183,7 +195,6 @@ p_ols = sum(t_stat>as.numeric(T0))/n_perm
 p_ols
 
 ## Check for the stationarity of coefficients, one at a time ---------------------------
-source("functions/stationarity_check.R")
 coef_to_check = "b1" #change it among: {"b1","b2","c1","c2","c3","f1","f2","k"}
 regs = list(b1 = b1,
             b2 = b2,
@@ -194,12 +205,12 @@ regs = list(b1 = b1,
             f2 = f2,
             k  = k)
 p_stationarity = stationarity_check(coef_to_check = coef_to_check,
-                                     regs          = regs,
-                                     y             = y,
-                                     bwe           = bwe,
-                                     bws           = bws,
-                                     utm_ev_sp     = utm_ev_sp,
-                                     utm_st_sp     = utm_st_sp)
+                                    regs          = regs,
+                                    y             = y,
+                                    bwe           = bwe,
+                                    bws           = bws,
+                                    utm_ev_sp     = utm_ev_sp,
+                                    utm_st_sp     = utm_st_sp)
 p_stationarity
 
 ## Check jointly the stationarity of regressors that are found to be stationary in the
@@ -230,7 +241,6 @@ n_perm = 1000
 t_stat = rep(0,n_perm)
 print("Permutations")
 pb = progress_bar$new(total=n_perm, format = "  computing [:bar] :percent eta: :eta")
-pb$tick(0)
 for (i in 1:n_perm){
   eps_star = sample(epsilon)
   y_star = H0 %*% y + eps_star
@@ -244,8 +254,6 @@ p_cumulative_stationary
 # H0: a constant coefficient is null
 # H1: a constant coefficient is different from zero
 # Note that: as R(H1) one may take R(H1) from the previous point
-source("functions/significance_check.R")
-
 Xc = cbind(b1,b2,f1,f2,c1)
 names_Xc = c("b1","b2","f1","f2","c1")
 Xe = cbind(c2,c3)
@@ -261,6 +269,7 @@ coef_to_check = "intercept" #change it among all regs that are found constant
 
 p_significance = significance_check(coef_to_check = coef_to_check,
                                     names_Xc      = names_Xc,
+                                    Xc            = Xc,
                                     Xe            = Xe,
                                     Xs            = Xs,
                                     y             = y,
@@ -291,7 +300,9 @@ print("SEC: ", gcvSEC)
 Xc = cbind(b1,b2,f1,f2,c1)
 Xe = cbind(c2,c3)
 Xs = k
+
 sec = SEC_only_calibration(Xc, Xe, Xs, y, "c", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp))
+
 n_sample = length(y)
 I = diag(1,n_sample)
 B = sec$B
@@ -310,9 +321,20 @@ R2adj
 
 ## Calibration  ------------------------------------------
 # Computation of the regression coefficients
-  
-result = SEC_grid_creation(Xc, Xe, Xs, y,"c", bwe, bws, coordinates(utm_ev_sp),
-                           coordinates(utm_st_sp), coords_utm, sec)
+source("functions/SEC_grid_creation.R")
+
+result = SEC_grid_creation(Xc        = Xc,
+                           Xe        = Xe,
+                           Xs        = Xs,
+                           y         = y,
+                           intercept = "c",
+                           bwe       = bwe,
+                           bws       = bws,
+                           utm_ev_sp = coordinates(utm_ev_sp),
+                           utm_st_sp = coordinates(utm_st_sp),
+                           grid      = coords_utm,
+                           emgwr     = sec)
+
 beta_const = result$beta_c
 
 beta_k = t(result$beta_s)
