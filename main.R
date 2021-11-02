@@ -25,7 +25,7 @@ cat("\014")
 
 ## Load -------------------------------------------------
 # Load data
-dataset = readRDS("italian_data_pga.RData")
+dataset = readRDS("data_dir/italian_data_pga.RData")
 
 # Load functions
 #source("functions.R")
@@ -40,7 +40,7 @@ source("functions/stationarity_check.R")
 source("functions/significance_check.R")
 
 # shapefiles
-shape_utm = st_read('confini_ut33.shp')
+shape_utm = st_read('data_dir/confini_ut33.shp')
 
 ## Shapefiles -------------------------------------------
 
