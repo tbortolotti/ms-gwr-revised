@@ -140,10 +140,9 @@ bwe = 25000
 bws = 75000
 
 ## PERMUTATION TESTS ---------------------------
-## Comparison of a constant coefficients model with a spatially varying coefficients model -------------
-# Joint test for the stationarity of the coefficients
+## Joint test for the stationarity of the coefficients --------------------
 # H0: all coefficients are constant
-# H1: at least one coefficient is spatially varying
+# H1: at least one coefficient is non-stationary
 ols = lm(y ~ Xc + Xe + Xs)
 
 (Start.Time <- Sys.time())
@@ -194,7 +193,7 @@ for (i in 1:n_perm){
 p_ols = sum(t_stat>as.numeric(T0))/n_perm
 p_ols
 
-## Check for the stationarity of coefficients, one at a time ---------------------------
+## One-at-a-time test for the stationarity of coefficients ---------------------------
 coef_to_check = "b1" #change it among: {"b1","b2","c1","c2","c3","f1","f2","k"}
 regs = list(b1 = b1,
             b2 = b2,
@@ -213,8 +212,7 @@ p_stationarity = stationarity_check(coef_to_check = coef_to_check,
                                     utm_st_sp     = utm_st_sp)
 p_stationarity
 
-## Check jointly the stationarity of regressors that are found to be stationary in the
-## previous tests -----------------------------------------------------------------------
+## Joint test for the stationarity of coefs found stationary -----------------------------------------------------------------------
 # H0: b1, b2, f1, f2, c1, other than the intercept, are constant
 # H1: at least one is spatially varying
 Xc = cbind(b1,b2,f1,f2,c1)
@@ -250,7 +248,7 @@ for (i in 1:n_perm){
 p_cumulative_stationary = sum(t_stat>as.numeric(T0))/n_perm
 p_cumulative_stationary
 
-## Significance of constant coefficients ------------------------------------------
+## One-at-a-time test for significance of constant coefficients ------------------------------------------
 # H0: a constant coefficient is null
 # H1: a constant coefficient is different from zero
 # Note that: as R(H1) one may take R(H1) from the previous point

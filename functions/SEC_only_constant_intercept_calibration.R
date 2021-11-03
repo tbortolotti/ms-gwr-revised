@@ -45,7 +45,6 @@ SEC_only_constant_intercept_calibration = function(Xe, Xs, y, bwe, bws, utm_ev_s
   #create Hs
   print("Create Hs")
   pb = progress_bar$new(total=N, format = "  computing [:bar] :percent eta: :eta")
-  pb$tick(0)
   for (i in 1:N){
     Ws = diag(gauss_kernel(dist_s_sim_cal[,i],bws))
     As = (solve((t(Xs)%*%Ws%*%Xs))) %*% t(Xs) %*% Ws
@@ -57,7 +56,6 @@ SEC_only_constant_intercept_calibration = function(Xe, Xs, y, bwe, bws, utm_ev_s
   #create He
   print("Create He")
   pb = progress_bar$new(total=N, format = "  computing [:bar] :percent eta: :eta")
-  pb$tick(0)
   for (i in 1:N){
     We = diag(gauss_kernel(dist_e_sim_cal[,i],bwe))
     Ae = (solve((t(Xe)%*%(t((I-Hs)))%*%We%*%(I-Hs)%*%Xe))) %*% t(Xe) %*% (t((I-Hs))) %*% We %*% (I-Hs)
