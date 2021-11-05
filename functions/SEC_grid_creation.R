@@ -81,7 +81,7 @@ SEC_grid_creation = function(Xc, Xe, Xs, y,intercept, bwe, bws, utm_ev_sp, utm_s
   y_tilde_s = (I-He)%*%y_tilde
   
   #5)compute beta_s for whole grid
-  rint("Evaluation of site-dependent coefficients")
+  print("Evaluation of site-dependent coefficients")
   pb = progress_bar$new(total=L, format = "  computing [:bar] :percent eta: :eta")
   for (i in 1:L){
     Ws = diag(gauss_kernel(dist_s_sim[,i],bws))

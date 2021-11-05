@@ -16,7 +16,8 @@ packages <- c("sf",
               "plot3D",
               "progress",
               "roahd",
-              "ggplot2")
+              "ggplot2",
+              "snowfall")
 
 # new packages
 new_packages  <- packages[!(packages %in% installed.packages()[,"Package"])] 

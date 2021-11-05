@@ -7,7 +7,7 @@ source('package_install.R')
 library(sf)
 library(raster)
 library(ggplot2)
-library(rgdal) 
+library(rgdal)
 library(GWmodel)
 library(cowplot)
 library(geosphere)
@@ -30,11 +30,10 @@ dataset = readRDS("data_dir/italian_data_pga.RData")
 # Load functions
 #source("functions/functions.R")
 source("functions/gcv_mei_only_one.R")
-source("functions/SEC_only_calibration.R")
+source("midpoint/functions/SEC_only_calibration.R")
 source("functions/ESC_only_calibration.R")
 source("functions/SEC_only_constant_intercept_calibration.R")
 source("functions/SEC_no_intercept_calibration.R")
-source("functions/SEC_grid_creation.R")
 source("functions/gauss_kernel.R")
 source("functions/stationarity_check.R")
 source("functions/significance_check.R")
@@ -299,27 +298,57 @@ Xc = cbind(b1,b2,f1,f2,c1)
 Xe = cbind(c2,c3)
 Xs = k
 
-sec = SEC_only_calibration(Xc, Xe, Xs, y, "c", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp))
+#sec = SEC_only_calibration(Xc        = Xc,
+#                           Xe        = Xe,
+#                           Xs        = Xs,
+#                           y         = y,
+#                           intercept = "c",
+#                           bwe       = bwe,
+#                           bws       = bws,
+#                           utm_ev_sp = coordinates(utm_ev_sp),
+#                           utm_st_sp = coordinates(utm_st_sp))
 
-n_sample = length(y)
-I = diag(1,n_sample)
-B = sec$B
-Xcc = cbind(rep(1,n_sample), Xc)
-H = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B #this can be saved as                                                                                      #"H_hat_pga.RData"
+source("parallel/functions/SEC_only_calibration.R")
+SEC_only_calibration(Xc        = Xc,
+                     Xe        = Xe,
+                     Xs        = Xs,
+                     y         = y,
+                     intercept = "c",
+                     bwe       = bwe,
+                     bws       = bws,
+                     utm_ev_sp = coordinates(utm_ev_sp),
+                     utm_st_sp = coordinates(utm_st_sp),
+                     model     = "benchmark")
+
+load("benchmark/large_matrices/only_calibration_Hs.RData")
+load("benchmark/large_matrices/only_calibration_He.RData")
+
+#create B
+N = length(y)
+I = diag(rep(1,N))
+B = I - He - Hs + Hs %*% He
+save(B, file="benchmark/large_matrices/only_calibration_B.RData")
+rm(Hs,He)
+
+Xcc = cbind(rep(1,N), Xc)
+H = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
+save(H, file="benchmark/large_matrices/only_calibration_H.RData")
+rm(B)
+
 epsilon= (I-H)%*%y
-delta1 = n_sample-2*tr(H)+tr(t(H)%*%H) #this can be saved as "delta1_pga.RData"
+delta1 = N-2*tr(H)+tr(t(H)%*%H) #this can be saved as "delta1_pga.RData"
 delta2 = tr((t(I-H)%*%(I-H)) %*% (t(I-H)%*%(I-H))) #this can be saved as "delta1_pga.RData"
 rss = sum(epsilon^2)
 sigma2hat = rss/delta1
 tss = sum((H%*%y-mean(y))^2)
 sqrt(sigma2hat)
 R2 = 1-rss/tss
-R2adj = 1-(1-R2)*(n_sample-1)/delta1
+R2adj = 1-(1-R2)*(N-1)/delta1
 R2adj
 
 ## Calibration  ------------------------------------------
 # Computation of the regression coefficients
-source("functions/SEC_grid_creation.R")
+source("parallel/functions/SEC_grid_creation.R")
 
 result = SEC_grid_creation(Xc        = Xc,
                            Xe        = Xe,
@@ -331,87 +360,147 @@ result = SEC_grid_creation(Xc        = Xc,
                            utm_ev_sp = coordinates(utm_ev_sp),
                            utm_st_sp = coordinates(utm_st_sp),
                            grid      = coords_utm,
-                           emgwr     = sec)
+                           model     = "benchmark")
+
+save(result, file="benchmark/large_matrices/result.RData")
+
+load("benchmark/large_matrices/result.RData")
 
 beta_const = result$beta_c
 
 beta_k = t(result$beta_s)
-beta_k_coord = cbind(coords_utm, beta_k)
+beta_k_coord = cbind(coords_utm, t(beta_k))
 beta_k_coord = as.data.frame(beta_k_coord)
+range(beta_k)
 
 beta_c2 = result$beta_e[1,]
 beta_c2_coord = cbind(coords_utm, beta_c2)
 beta_c2_coord = as.data.frame(beta_c2_coord)
+range(beta_c2)
 
 beta_c3 = result$beta_e[2,]
 beta_c3_coord = cbind(coords_utm, beta_c3)
 beta_c3_coord = as.data.frame(beta_c3_coord)
+range(beta_c3)
 
 ## PLOTS ---------------------------------------------------------
 # Plots of non-stationary regression coefficients
+
+## k
+beta_k_bis = beta_k
+beta_k_bis[beta_k_bis<(-1)]=-1
+beta_k_bis[beta_k_bis>(0)]=0
+beta_k_coord = cbind(coords_utm, t(beta_k))
+beta_k_coord = as.data.frame(beta_k_coord)
+beta_k_bis_coord = cbind(coords_utm, t(beta_k_bis))
+beta_k_bis_coord = as.data.frame(beta_k_bis_coord)
+x11()
 ggplot() + 
-  geom_tile(beta_k_coord, mapping = aes(x=x1, y=x2, fill=beta_k))+
+  geom_tile(beta_k_bis_coord, mapping = aes(x=x1, y=x2, fill=beta_k_bis))+
   scale_fill_gradientn(colours = c("darkblue", "dodgerblue1", "cadetblue2", "white"), name = "k"
                        ,limits = c(-1,0), breaks = c(-1, -0.5,0)
   )+
   geom_sf(data = shape_utm_no_lamp, size = 1.6, color = "black", fill = NA )+
   geom_point(data = utm_st, aes(x=longitude_st, y=latitude_st), fill= 'firebrick3',
              size = 1, shape = 21, stroke = 0.7)+
+  ggtitle("Benchmark")+
   theme(axis.text=element_text(size=15, colour = "black"),
         axis.title=element_blank(),
-        legend.text=element_text(size=20, colour = "black"),
-        plot.title = element_blank(),
+        legend.text=element_text(size=15, colour = "black"),
+        plot.title = element_text(size=15, hjust = 0.5),
         axis.ticks=element_blank(),
-        legend.title = element_text(size=20, colour = "black"),
+        legend.title = element_text(size=15, colour = "black"),
         panel.background = element_rect(fill = "lightcyan2", colour = "skyblue3",
                                         size = 2, linetype = "solid"),
         panel.grid = element_line(size = 0.25, linetype = 'solid',
                                   colour = "aliceblue"))
+ggsave(filename = "k.png",
+       plot = last_plot(),
+       device = NULL,
+       path = "benchmark/coefs_estimates",
+       scale = 1,
+       limitsize = FALSE,
+       dpi = 320)
 
+dev.off()
+
+## c2
+beta_c2_bis = beta_c2
+beta_c2_bis[beta_c2_bis<(-2)]=-2
+beta_c2_bis[beta_c2_bis>(-1)]=-1
+beta_c2_coord = cbind(coords_utm, beta_c2)
+beta_c2_coord = as.data.frame(beta_c2_coord)
+beta_c2_bis_coord = cbind(coords_utm, beta_c2_bis)
+beta_c2_bis_coord = as.data.frame(beta_c2_bis_coord)
+x11()
 ggplot() + 
-  geom_tile(beta_c2_coord, mapping = aes(x=x1, y=x2, fill=beta_c2))+
+  geom_tile(beta_c2_bis_coord, mapping = aes(x=x1, y=x2, fill=beta_c2_bis))+
   #coord_sf()+
   scale_fill_gradientn(colours = c("darkblue", "dodgerblue1", "cadetblue2", "white")
                        , name = expression(paste(c[2]))
-                       ,limits = c(-1.8, -1), breaks = c(-1.8, -1.4, -1),
-                       labels = c(-1.8, -1.4, -1))+
+                       ,limits = c(-2,-1), breaks = c(-2, -1.5, -1),
+                       labels = c(-2, -1.5, -1))+
   geom_sf(data = shape_utm_no_lamp, size = 1.6, color = "black", fill = NA)+
   geom_point(data = utm_ev, aes(x=longitude_ev, y=latitude_ev), fill= 'firebrick3',
              size = 3, shape = 21, stroke = 1.5)+
+  ggtitle("Benchmark")+
   theme(axis.text=element_text(size=15, colour = "black"),
         axis.title=element_blank(),
-        legend.text=element_text(size=20, colour = "black"),
-        plot.title = element_blank(),
+        legend.text=element_text(size=15, colour = "black"),
+        plot.title = element_text(size=15, hjust = 0.5),
         axis.ticks=element_blank(),
-        legend.title = element_text(size=20, colour = "black"),
+        legend.title = element_text(size=15, colour = "black"),
         panel.background = element_rect(fill = "lightcyan2", colour = "skyblue3",
                                         size = 2, linetype = "solid"),
         panel.grid = element_line(size = 0.25, linetype = 'solid',
                                   colour = "aliceblue"))
+ggsave(filename = "c2.png",
+       plot = last_plot(),
+       device = NULL,
+       path = "benchmark/coefs_estimates",
+       scale = 1,
+       limitsize = FALSE,
+       dpi = 320)
 
+dev.off()
+
+## c3
 beta_c3_bis = beta_c3
 beta_c3_bis[beta_c3_bis<(-0.009)]=-0.009
+beta_c3_bis[beta_c3_bis>(0.005)]=0.005
 beta_c3_coord = cbind(coords_utm, beta_c3)
 beta_c3_coord = as.data.frame(beta_c3_coord)
 beta_c3_bis_coord = cbind(coords_utm, beta_c3_bis)
 beta_c3_bis_coord = as.data.frame(beta_c3_bis_coord)
+x11()
 
 ggplot() + 
   geom_tile(beta_c3_bis_coord, mapping = aes(x=x1, y=x2, fill=beta_c3_bis))+
-  scale_fill_gradientn(colours = c("darkblue", "dodgerblue1", "cadetblue2", "white")
-                       , name = expression(paste(c[3]))
-                       ,limits = c(-0.009, 0.003), breaks = c(-0.009, -0.006, -0.003, 0, 0.003),
-                       labels = c("<-0.009", -0.006, -0.003, 0, 0.003))+
+  scale_fill_gradientn(colours = c("darkblue", "dodgerblue1", "cadetblue2", "white"),
+                       name = expression(paste(c[3])),
+                       limits = c(-0.01, 0.005), breaks = c(-0.01, -0.005, 0, 0.005),
+                       labels = c(-0.01, -0.005, 0, 0.005)) +
   geom_sf(data = shape_utm_no_lamp, size = 1.6, color = "black", fill = NA)+
   geom_point(data = utm_ev, aes(x=longitude_ev, y=latitude_ev), fill= 'firebrick3',
              size = 3, shape = 21, stroke = 1.5)+
+  ggtitle("Benchmark") +
   theme(axis.text=element_text(size=15, colour = "black"),
         axis.title=element_blank(),
-        legend.text=element_text(size=20, colour = "black"),
-        plot.title = element_blank(),
+        legend.text=element_text(size=15, colour = "black"),
+        plot.title = element_text(size=15, hjust = 0.5),
         axis.ticks=element_blank(),
-        legend.title = element_text(size=20, colour = "black"),
+        legend.title = element_text(size=15, colour = "black"),
         panel.background = element_rect(fill = "lightcyan2", colour = "skyblue3",
                                         size = 2, linetype = "solid"),
         panel.grid = element_line(size = 0.25, linetype = 'solid',
                                   colour = "aliceblue"))
+
+ggsave(filename = "c3.png",
+       plot = last_plot(),
+       device = NULL,
+       path = "benchmark/coefs_estimates",
+       scale = 1,
+       limitsize = FALSE,
+       dpi = 320)
+
+dev.off()
