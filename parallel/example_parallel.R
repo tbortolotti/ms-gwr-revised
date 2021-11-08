@@ -1,4 +1,6 @@
-setwd("C:/Users/Teresa Bortolotti/Documents/R/ms-gwr-revised")
+
+setwd("/home/giovanni/Scrivania/teresa/ms-gwr-revised")
+
 
 rm(list=ls())
 graphics.off()
@@ -27,7 +29,7 @@ my_fun = function(i, Xs, dist_mat, bws, gauss_kernel)
 library(snowfall)
 
 # init cluster parallelization
-ncpu = 2
+ncpu = 4
 sfInit(par=TRUE,cp=ncpu)
 
 # number of simulations
@@ -49,7 +51,6 @@ sfStop()
 Hs = t(Hs)
 save(Hs, file="parallel/support/Hs.RData")
 
-NN = 10
 N = dim(Xs)[1]
 Hs_vero = matrix(0,N,N)
 (Start.Time <- Sys.time())
@@ -61,6 +62,7 @@ for (i in 1:N){
 End.Time <- Sys.time()
 print(paste0("Serie: ",round(End.Time - Start.Time, 2)))
 save(Hs_vero, file="parallel/support/Hs_vero.RData")
+load("parallel/support/Hs_vero.RData")
 
 
 sum(Hs!=Hs_vero)

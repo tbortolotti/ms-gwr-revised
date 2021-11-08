@@ -87,4 +87,5 @@ k = log10(vs30/800)*(vs30<=1500)+log10(1500/800)*(vs30>1500)
 y = log10(rotD50_pga)
 detach(dataset)
 
-save(b1,b2,c1,c2,c3,f1,f2,k,mh,mref,h, file="data_dir/regressors.RData")
+save(b1,b2,c1,c2,c3,f1,f2,k,mh,mref,h,y, file="data_dir/regressors.RData")
+

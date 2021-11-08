@@ -26,6 +26,7 @@ cat("\014")
 # Load coordinates data and regressors (SEE file data_preparation.R)
 load("data_dir/utm_coordinates.RData")
 load("data_dir/regressors.RData")
+N = length(y)
 
 # Load functions
 source("functions/gcv_mei_only_one.R")
@@ -103,7 +104,7 @@ only_intercept = SEC_calibration(Xc        = Xc,
 End.Time <- Sys.time()
 round(End.Time - Start.Time, 2)
 
-N = length(y)
+
 #compute R(H0)
 X = cbind(rep(1,N), Xc, Xe, Xs)
 I = diag(1,N)
