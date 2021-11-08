@@ -44,6 +44,8 @@ SEC_calibration = function(Xc, Xe, Xs, y, intercept, bwe, bws, utm_ev_sp, utm_st
   Xs = as.matrix(Xs)
   n_s = dim(Xs)[2] #number of site-dependent covariates
   
+  I = diag(rep(1,N))
+  
   ## FUNCTIONS ----------------------------------
   gauss_kernel = function(d, h){
     wgts = exp(-0.5*(d/h)^2)
@@ -101,7 +103,6 @@ SEC_calibration = function(Xc, Xe, Xs, y, intercept, bwe, bws, utm_ev_sp, utm_st
   save(He, file=paste0(model,"/large_matrices/SEC_",test,"_calibration_He.RData"))
   
   #create B
-  I = diag(rep(1,N))
   B = I - He - Hs + Hs %*% He
   
   calibration <- list("He" = He,

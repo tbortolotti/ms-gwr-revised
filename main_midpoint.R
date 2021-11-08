@@ -30,7 +30,7 @@ dataset = readRDS("data_dir/italian_data_pga.RData")
 #source("functions/functions.R")
 source("functions/gcv_mei_only_one.R")
 #source("parallel/functions/SEC_only_calibration.R")
-source("parallel/functions/ESC_only_calibration.R")
+source("parallel/functions/ESC_calibration.R")
 #source("parallel/functions/SEC_only_constant_intercept_calibration.R")
 #source("parallel/functions/SEC_no_intercept_calibration.R")
 source("parallel/functions/SEC_calibration.R")
@@ -120,14 +120,15 @@ for (i in 1:n_bwm){ #i=1
     print(paste0("Bandwidth midpoint: ", bwm_tot[i], " / Bandwidth site: ", bws_tot[j]))
     bandwidth = gcv_mei_only_one(bwe       = bwm_tot[i],
                                  bws       = bws_tot[j],
-                                 func      = SEC_only_calibration,
+                                 func      = SEC_calibration,
                                  Xc        = Xc,
                                  Xe        = Xe,
                                  Xs        = Xs,
                                  y         = y,
                                  intercept = "c",
                                  utm_ev_sp = coordinates(utm_md_sp),
-                                 utm_st_sp = coordinates(utm_st_sp))
+                                 utm_st_sp = coordinates(utm_st_sp),
+                                 model     = "midpoint")
     bw_table[i,j] = bandwidth$gcv
   }
 }
@@ -312,7 +313,7 @@ Xc = cbind(b1,b2,f1,f2,c1)
 Xe = cbind(c2,c3)
 Xs = k
 
-gcvESC = gcv_mei_only_one(bwm,bws,ESC_only_calibration, Xc, Xe, Xs, y, "c", coordinates(utm_md_sp),
+gcvESC = gcv_mei_only_one(bwm,bws,ESC_calibration, Xc, Xe, Xs, y, "c", coordinates(utm_md_sp),
                           coordinates(utm_st_sp))
 print("ESC: ", gcvESC)
 
@@ -335,21 +336,22 @@ sec = SEC_calibration(Xc        = Xc,
                       bws       = bws,
                       utm_ev_sp = coordinates(utm_md_sp),
                       utm_st_sp = coordinates(utm_st_sp),
-                      model     = "midpoint")
+                      model     = "midpoint",
+                      test      = "full_computation")
 
-load("midpoint/large_matrices/only_calibration_Hs.RData")
-load("midpoint/large_matrices/only_calibration_He.RData")
+load("midpoint/large_matrices/full_calibration_Hs.RData")
+load("midpoint/large_matrices/full_calibration_He.RData")
 
 #create B
 N = length(y)
 I = diag(rep(1,N))
 B = I - He - Hs + Hs %*% He
-save(B, file="midpoint/large_matrices/only_calibration_B.RData")
+save(B, file="midpoint/large_matrices/full_calibration_B.RData")
 rm(Hs,He)
 
 Xcc = cbind(rep(1,N), Xc)
 H = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
-save(H, file="midpoint/large_matrices/only_calibration_H.RData")
+save(H, file="midpoint/large_matrices/full_calibration_H.RData")
 rm(B)
 epsilon= (I-H)%*%y
 delta1 = N-2*tr(H)+tr(t(H)%*%H)
