@@ -136,8 +136,8 @@ p
 save(p, file="midpoint/pvals/model_stationarity.RData")
 
 ## One-at-a-time test for the stationarity of coefficients ---------------------------
-n_coef_to_check = "b2" #change it among: {"b1","b2","c1","c2","c3","f1","f2","k"}
-coef_to_check = b2
+n_coef_to_check = "c1" #change it among: {"b1","b2","c1","c2","c3","f1","f2","k"}
+coef_to_check = c1
 regs = list(b1 = b1,
             b2 = b2,
             c1 = c1,
