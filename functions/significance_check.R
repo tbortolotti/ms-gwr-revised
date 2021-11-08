@@ -39,9 +39,9 @@ significance_check <- function(coef_to_check, names_Xc, Xc, Xe, Xs, y, bwe,
   
   if(coef_to_check=="intercept")
   {
-    sec_null = SEC_no_intercept_calibration(Xc, Xe, Xs, y, bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp))
+    sec_null = SEC_calibration(Xc, Xe, Xs, y, "no", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp), model, paste0("significance_",coef_to_check))
   } else {
-    sec_null = SEC_only_calibration(Xc, Xe, Xs, y, "c", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp))
+    sec_null = SEC_calibration(Xc, Xe, Xs, y, "c", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp), model, paste0("significance_",coef_to_check))
   }
   #compute R(H0)
   I= diag(1,N)

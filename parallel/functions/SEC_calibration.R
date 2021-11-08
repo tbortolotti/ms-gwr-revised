@@ -1,47 +1,48 @@
 #'
-#' Calibration of a model with constant intercept, via SEC algorithm
+#' SEC algorithm for calibration
 #'
-#' This function performs the calibration of a model with constant intercept,
-#' using the SEC algorithm. In the practice, it builds the matrices
-#' He, Hs and B that are used to obtain the estimates of the regression coefficients.
+#' This function builds matrices He, Hs and B that are used for the MS-GWR
+#' via SEC algorithm
 #'
 #' @param Xc:          matrix of constant predictor variables
 #' @param Xe:          matrix of event-varying predictor variables
 #' @param Xs:          matrix of site-varying predictor variables
 #' @param y:           response variable
+#' @param intercept:   either "c" (constant), "e" (event-dependent), "s" (site-dependent)
 #' @param bwe:         bandwidth for event
 #' @param bws:         bandwidth for site
-#' @param utm_ev_sp:    utm coordinates of the events
+#' @param utm_ev_sp:   utm coordinates of the events
 #' @param utm_st_sp:   utm coordinates of the site
 #' @param model:       choose among ("midpoint","benchmark") or whichever other model you're working with
+#' @param test:        It is a name we give to the calibration and it is a parameter that we use to save
+#'                     the large matrices generated
 #' 
 #' @return a three-element list with the following components:
 #'         He:    matrix He
 #'         Hs:    matrix Hs
 #'         B:     matrix B
-#' 
+#'
 
-SEC_only_constant_intercept_calibration = function(Xe, Xs, y, bwe, bws, utm_ev_sp, utm_st_sp, model){
+SEC_calibration = function(Xc, Xe, Xs, y, intercept, bwe, bws, utm_ev_sp, utm_st_sp, model, test){
+  
   dist_e_sim_cal = gw.dist(utm_ev_sp, utm_ev_sp, focus=0, p=2, theta=0, longlat=F)
   dist_s_sim_cal = gw.dist(utm_st_sp, utm_st_sp, focus=0, p=2, theta=0, longlat=F)
   
   N = length(y) #y vector of responses
-  Xc = rep(1,N)
-  
-  I = diag(rep(1,N))
+  if (intercept == "c"){
+    Xc = cbind(rep(1,N), Xc)
+  } else if (intercept == "e"){
+    Xe = cbind(rep(1,N), Xe)
+  } else if (intercept == "s"){
+    Xs = cbind(rep(1,N), Xs)
+  }
   
   Xc = as.matrix(Xc)
-  n_c = 1
+  n_c = dim(Xc)[2] #number constant of covariates
   Xe = as.matrix(Xe)
   n_e = dim(Xe)[2] #number of event-dependent covariates
   Xs = as.matrix(Xs)
   n_s = dim(Xs)[2] #number of site-dependent covariates
-  
-  Ae = matrix(0,n_e,N)
-  As = matrix(0,n_s,N)
-  
-  He = matrix(0,N,N)
-  Hs = matrix(0,N,N)
   
   ## FUNCTIONS ----------------------------------
   gauss_kernel = function(d, h){
@@ -80,7 +81,7 @@ SEC_only_constant_intercept_calibration = function(Xe, Xs, y, bwe, bws, utm_ev_s
   print(paste0("Building Hs: ",round(End.Time - Start.Time, 2)))
   sfStop() #stop cluster parallelization
   Hs = t(Hs)
-  save(Hs, file=paste0(model,"/large_matrices/only_constant_intercept_calibration_Hs.RData"))
+  save(Hs, file=paste0(model,"/large_matrices/SEC_",test,"_calibration_Hs.RData"))
   
   #create He
   sfInit(par=TRUE,cp=ncpu)
@@ -97,12 +98,17 @@ SEC_only_constant_intercept_calibration = function(Xe, Xs, y, bwe, bws, utm_ev_s
   print(paste0("Building He: ",round(End.Time - Start.Time, 2)))
   sfStop() #stop cluster parallelization
   He = t(He)
-  save(He, file=paste0(model,"/large_matrices/only_constant_intercept_calibration_He.RData"))  
+  save(He, file=paste0(model,"/large_matrices/SEC_",test,"_calibration_He.RData"))
+  
   #create B
+  I = diag(rep(1,N))
   B = I - He - Hs + Hs %*% He
   
   calibration <- list("He" = He,
                       "Hs" = Hs,
                       "B" = B)
+  
   return(calibration)
+  
 }
+

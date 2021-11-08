@@ -11,8 +11,9 @@
 #' @param y:           response variable
 #' @param bwe:         bandwidth for event
 #' @param bws:         bandwidth for site
-#' @param utm_ev_sp:    utm coordinates of the events
+#' @param utm_ev_sp:   utm coordinates of the events
 #' @param utm_st_sp:   utm coordinates of the site   
+#' @param model:       choose among ("midpoint","benchmark") or whichever other model you're working with
 #' 
 #' @return a three-element list with the following components:
 #'         He:    matrix He
@@ -64,7 +65,7 @@ SEC_no_intercept_calibration = function(Xc, Xe, Xs, y, bwe, bws, utm_ev_sp, utm_
   ## ---------------------------------------------
   
   #create Hs
-  ncpu = 6 # init cluster parallelization
+  ncpu = 4 # init cluster parallelization
   sfInit(par=TRUE,cp=ncpu)
   reps = 1:N
   (Start.Time <- Sys.time())

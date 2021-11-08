@@ -72,7 +72,7 @@ ESC_only_calibration = function(Xc, Xe, Xs, y,intercept, bwe, bws, utm_ev_sp, ut
   ## ---------------------------------------------
   
   #create He
-  ncpu = 6 # init cluster parallelization
+  ncpu = 4 # init cluster parallelization
   sfInit(par=TRUE,cp=ncpu)
   reps = 1:N
   (Start.Time <- Sys.time())

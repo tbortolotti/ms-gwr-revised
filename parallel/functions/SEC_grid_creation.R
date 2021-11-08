@@ -15,6 +15,7 @@
 #' @param utm_st_sp:   utm coordinates of the site
 #' @param grid:        Matrix of the coordinates of grid points where to evaluate
 #'                     the regression coefficients. dim(grid) = [n points] [2]
+#' @param model:       Choose among ("midpoint","benchmark") or whichever other model to be tested
 #' 
 #' @return a six-element list with the following components:
 #'         beta_c:     matrix of constant coefficients, evaluated on the grid points.
@@ -86,7 +87,7 @@ SEC_grid_creation = function(Xc, Xe, Xs, y,intercept, bwe, bws, utm_ev_sp, utm_s
   y_tilde = y-Xc%*%beta_c
   
   #3)compute beta_e for whole grid
-  ncpu=6
+  ncpu=4
   sfInit(par=TRUE,cp=ncpu)
   reps = 1:L
   (Start.Time <- Sys.time())

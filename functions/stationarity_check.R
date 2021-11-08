@@ -23,7 +23,7 @@
 #' 
 
 
-stationarity_check <- function(coef_to_check, regs, y, bwe, bws, utm_ev_sp, utm_st_sp, model)
+stationarity_check <- function(n_coef_to_check, coef_to_check, regs, y, bwe, bws, utm_ev_sp, utm_st_sp, model)
 {
   ## coefs
   b1 = regs$b1
@@ -39,22 +39,23 @@ stationarity_check <- function(coef_to_check, regs, y, bwe, bws, utm_ev_sp, utm_
   s_dependent = cbind(b1,b2,f1,f2,c1,k)
   
   names_e_dependent = c("c2","c3")
-  logic_vec = (names_e_dependent != coef_to_check)
+  logic_vec = (names_e_dependent != n_coef_to_check)
   e_dependent = e_dependent[,logic_vec]
   
   names_s_dependent = c("b1","b2","f1","f2","c1","k")
-  logic_vec = (names_s_dependent != coef_to_check)
+  logic_vec = (names_s_dependent != n_coef_to_check)
   s_dependent = s_dependent[,logic_vec]
   
   Xc = coef_to_check
   Xe = e_dependent
   Xs = s_dependent
   
-  sec = SEC_only_calibration(Xc, Xe, Xs, y, "c", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp))
+  sec = SEC_calibration(Xc, Xe, Xs, y, "c", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp), model, paste0("stationarity_",coef_to_check))
   #compute R(H0)
-  I= diag(1,n_sample)
+  N = dim(Xe)[1]
+  I= diag(1,N)
   B = sec$B
-  Xcc = cbind(rep(1,n_sample), Xc)
+  Xcc = cbind(rep(1,N), Xc)
   H0 = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
   RH0 = t(I-H0)%*%(I-H0)
   epsilon= (I-H0)%*%y

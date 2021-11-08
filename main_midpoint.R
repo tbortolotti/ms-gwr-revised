@@ -15,7 +15,6 @@ library(pracma)
 library(reshape2)
 library(plot3D)
 library(progress)
-library(roahd)
 library(ggplot2)
 library(snowfall)
 
@@ -30,10 +29,11 @@ dataset = readRDS("data_dir/italian_data_pga.RData")
 # Load functions
 #source("functions/functions.R")
 source("functions/gcv_mei_only_one.R")
-source("parallel/functions/SEC_only_calibration.R")
+#source("parallel/functions/SEC_only_calibration.R")
 source("parallel/functions/ESC_only_calibration.R")
-source("parallel/functions/SEC_only_constant_intercept_calibration.R")
-source("parallel/functions/SEC_no_intercept_calibration.R")
+#source("parallel/functions/SEC_only_constant_intercept_calibration.R")
+#source("parallel/functions/SEC_no_intercept_calibration.R")
+source("parallel/functions/SEC_calibration.R")
 source("functions/gauss_kernel.R")
 source("functions/stationarity_check.R")
 source("functions/significance_check.R")
@@ -104,10 +104,6 @@ k = log10(vs30/800)*(vs30<=1500)+log10(1500/800)*(vs30>1500)
 y = log10(rotD50_pga)
 detach(dataset)
 
-Xc = cbind(b1,b2,f1,f2,c1)
-Xe = cbind(c2,c3)
-Xs = k
-
 ## Selection of the optimal bandwidth -------------------------------
 bwe_tot = c(10000, 25000, 50000, 75000, 100000)
 bws_tot = c(10000, 25000, 50000, 75000, 100000)
@@ -149,34 +145,47 @@ bws = 75000
 ## Joint test for the stationarity of the coefficients --------------------
 # H0: all coefficients are constant
 # H1: at least one coefficient is non-stationary
+Xc = cbind(b1,b2,f1,f2,c1)
+Xe = cbind(c2,c3)
+Xs = k
+
 ols = lm(y ~ Xc + Xe + Xs)
+# only the intercept is considered as constant
+Xc = c()
+Xe = cbind(c2,c3)
+Xs = cbind(b1,b2,f1,f2,c1,k)
 
 (Start.Time <- Sys.time())
-only_intercept = SEC_only_constant_intercept_calibration(Xe        = Xe,
-                                                         Xs        = cbind(Xc, Xs),
-                                                         y         = y,
-                                                         bwe       = bwm,
-                                                         bws       = bws,
-                                                         utm_ev_sp = coordinates(utm_md_sp),
-                                                         utm_st_sp = coordinates(utm_st_sp))
+only_intercept = SEC_calibration(Xc        = Xc,
+                                 Xe        = Xe,
+                                 Xs        = Xs,
+                                 intercept = "c",
+                                 y         = y,
+                                 bwe       = bwm,
+                                 bws       = bws,
+                                 utm_ev_sp = coordinates(utm_md_sp),
+                                 utm_st_sp = coordinates(utm_st_sp),
+                                 model     = "midpoint",
+                                 test      = "only_constant_intercept")
 
 End.Time <- Sys.time()
-## Run-time:
 round(End.Time - Start.Time, 2)
 
-save(only_intercept, file="midpoint/only_intercept.RData")
-load("midpoint/only_intercept.RData")
+load("midpoint/large_matrices/SEC_only_constant_intercept_calibration_He.RData")
+load("midpoint/large_matrices/SEC_only_constant_intercept_calibration_Hs.RData")
+B = I - He - Hs + Hs %*% He
+rm(He,Hs)
 
-n_sample = length(y)
+N = length(y)
 #compute R(H0)
-X = cbind(rep(1,n_sample), Xc, Xe, Xs)
-I = diag(1,n_sample)
+X = cbind(rep(1,N), Xc, Xe, Xs)
+I = diag(1,N)
 Hols = X%*%(solve(t(X)%*%X))%*%t(X)
 RH0 = t(I-Hols)%*%(I-Hols)
 epsilon = (I-Hols)%*%y
 #compute R(H1)
 B = only_intercept$B
-Xcc = rep(1,n_sample)
+Xcc = rep(1,N)
 H1 = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
 RH1 = t(I-H1)%*%(I-H1)
 save(RH1, file="midpoint/RH1_only_intercept_rotD50pga.RData")
@@ -195,11 +204,13 @@ for (i in 1:n_perm){
   t_stat[i] = (t(y_star) %*% (RH0-RH1) %*% y_star) / (t(y_star) %*% RH1 %*% y_star)
   pb$tick()
 }
-p_ols = sum(t_stat>as.numeric(T0))/n_perm
-p_ols
+p = sum(t_stat>as.numeric(T0))/n_perm
+p
+save(p, file="midpoint/pvals/model_stationarity.RData")
 
 ## One-at-a-time test for the stationarity of coefficients ---------------------------
-coef_to_check = "b1" #change it among: {"b1","b2","c1","c2","c3","f1","f2","k"}
+n_coef_to_check = "b1" #change it among: {"b1","b2","c1","c2","c3","f1","f2","k"}
+coef_to_check = b1
 regs = list(b1 = b1,
             b2 = b2,
             c1 = c1,
@@ -208,14 +219,20 @@ regs = list(b1 = b1,
             f1 = f1,
             f2 = f2,
             k  = k)
-p_stationarity = stationarity_check(coef_to_check = coef_to_check,
-                                    regs          = regs,
-                                    y             = y,
-                                    bwe           = bwm,
-                                    bws           = bws,
-                                    utm_ev_sp     = utm_md_sp,
-                                    utm_st_sp     = utm_st_sp)
-p_stationarity
+(Start.Time <- Sys.time())
+p = stationarity_check(n_coef_to_check = n_coef_to_check,
+                       coef_to_check   = coef_to_check,
+                       regs            = regs,
+                       y               = y,
+                       bwe             = bwm,
+                       bws             = bws,
+                       utm_ev_sp       = utm_md_sp,
+                       utm_st_sp       = utm_st_sp,
+                       model           = "midpoint")
+p
+save(p, file=paste0("midpoint/pvals/stationarity_",coef_to_check,".RData"))
+End.Time <- Sys.time()
+round(End.Time - Start.Time, 2)
 
 ## Joint test for the stationarity of coefs found stationary -----------------------------------------------------------------------
 # H0: b1, b2, f1, f2, c1, other than the intercept, are constant
@@ -224,17 +241,17 @@ Xc = cbind(b1,b2,f1,f2,c1)
 Xe = cbind(c2,c3)
 Xs = k
 ols = lm(y ~ Xc + Xe + Xs)
-sec = SEC_only_calibration(Xc, Xe, Xs, y, "c", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp))
+sec = SEC_calibration(Xc, Xe, Xs, y, "c", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp))
 #compute R(H0)
-X = cbind(rep(1,n_sample), Xc, Xe, Xs)
-I = diag(1,n_sample)
+X = cbind(rep(1,N), Xc, Xe, Xs)
+I = diag(1,N)
 Hols = X%*%(solve(t(X)%*%X))%*%t(X)
 RH0 = t(I-Hols)%*%(I-Hols)
 epsilon = (I-Hols)%*%y
 #compute R(H1)
-I= diag(1,n_sample)
+I= diag(1,N)
 B = sec$B
-Xcc = cbind(rep(1,n_sample), Xc)
+Xcc = cbind(rep(1,N), Xc)
 H0 = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
 RH1 = t(I-H0)%*%(I-H0)
 save(RH1, file="midpoint/RH1_stationary_rotD50pga.RData")
@@ -250,8 +267,9 @@ for (i in 1:n_perm){
   t_stat[i] = (t(y_star) %*% (RH0-RH1) %*% y_star) / (t(y_star) %*% RH1 %*% y_star)
   pb$tick()
 }
-p_cumulative_stationary = sum(t_stat>as.numeric(T0))/n_perm
-p_cumulative_stationary
+p = sum(t_stat>as.numeric(T0))/n_perm
+p
+save(p, file="midpoint/pvals/joint_stationarity.RData")
 
 ## One-at-a-time test for significance of constant coefficients ------------------------------------------
 # H0: a constant coefficient is null
@@ -272,18 +290,19 @@ Xs = k
 
 coef_to_check = "intercept" #change it among all regs that are found constant
 
-p_significance = significance_check(coef_to_check = coef_to_check,
-                                    names_Xc      = names_Xc,
-                                    Xc            = Xc,
-                                    Xe            = Xe,
-                                    Xs            = Xs,
-                                    y             = y,
-                                    bwe           = bwm,
-                                    bws           = bws,
-                                    utm_ev_sp     = utm_md_sp,
-                                    utm_st_sp     = utm_st_sp)
-p_significance
-save(p, file=paste0("midpoint/pvals/",coef_to_check,".RData"))
+p = significance_check(coef_to_check = coef_to_check,
+                       names_Xc      = names_Xc,
+                       Xc            = Xc,
+                       Xe            = Xe,
+                       Xs            = Xs,
+                       y             = y,
+                       bwe           = bwm,
+                       bws           = bws,
+                       utm_ev_sp     = utm_md_sp,
+                       utm_st_sp     = utm_st_sp,
+                       model         = "midpoint")
+p
+save(p, file=paste0("midpoint/pvals/significance_",coef_to_check,".RData"))
 
 
 ## GCV comparison --------------------------------------------------------------
@@ -297,7 +316,7 @@ gcvESC = gcv_mei_only_one(bwm,bws,ESC_only_calibration, Xc, Xe, Xs, y, "c", coor
                           coordinates(utm_st_sp))
 print("ESC: ", gcvESC)
 
-gcvSEC = gcv_mei_only_one(bwm,bws,SEC_only_calibration, Xc, Xe, Xs, y, "c", coordinates(utm_md_sp),
+gcvSEC = gcv_mei_only_one(bwm,bws,SEC_calibration, Xc, Xe, Xs, y, "c", coordinates(utm_md_sp),
                           coordinates(utm_st_sp))
 print("SEC: ", gcvSEC)
 
@@ -307,18 +326,16 @@ Xc = cbind(b1,b2,f1,f2,c1)
 Xe = cbind(c2,c3)
 Xs = k
 
-source("parallel/functions/SEC_only_calibration.R")
-
-sec = SEC_only_calibration(Xc        = Xc,
-                           Xe        = Xe,
-                           Xs        = Xs,
-                           y         = y,
-                           intercept = "c",
-                           bwe       = bwm,
-                           bws       = bws,
-                           utm_ev_sp = coordinates(utm_md_sp),
-                           utm_st_sp = coordinates(utm_st_sp),
-                           model     = "midpoint")
+sec = SEC_calibration(Xc        = Xc,
+                      Xe        = Xe,
+                      Xs        = Xs,
+                      y         = y,
+                      intercept = "c",
+                      bwe       = bwm,
+                      bws       = bws,
+                      utm_ev_sp = coordinates(utm_md_sp),
+                      utm_st_sp = coordinates(utm_st_sp),
+                      model     = "midpoint")
 
 load("midpoint/large_matrices/only_calibration_Hs.RData")
 load("midpoint/large_matrices/only_calibration_He.RData")
