@@ -22,7 +22,8 @@
 #' @param bwe:             bandwidth for event
 #' @param bws:             bandwidth for site
 #' @param utm_ev_sp:       utm coordinates of the events
-#' @param utm_st_sp:       utm coordinates of the site   
+#' @param utm_st_sp:       utm coordinates of the site
+#' @param model:           choose among ("midpoint","benchmark") or whichever other model you're working with
 #' 
 #' @return p:              p-value of the non-parametric test
 #' 

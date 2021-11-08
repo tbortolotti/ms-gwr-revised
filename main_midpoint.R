@@ -230,7 +230,7 @@ p = stationarity_check(n_coef_to_check = n_coef_to_check,
                        utm_st_sp       = utm_st_sp,
                        model           = "midpoint")
 p
-save(p, file=paste0("midpoint/pvals/stationarity_",coef_to_check,".RData"))
+save(p, file=paste0("midpoint/pvals/stationarity_",n_coef_to_check,".RData"))
 End.Time <- Sys.time()
 round(End.Time - Start.Time, 2)
 
