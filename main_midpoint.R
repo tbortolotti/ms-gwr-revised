@@ -30,7 +30,7 @@ dataset = readRDS("data_dir/italian_data_pga.RData")
 # Load functions
 #source("functions/functions.R")
 source("functions/gcv_mei_only_one.R")
-source("midpoint/functions/SEC_only_calibration.R")
+source("parallel/functions/SEC_only_calibration.R")
 source("functions/ESC_only_calibration.R")
 source("functions/SEC_only_constant_intercept_calibration.R")
 source("functions/SEC_no_intercept_calibration.R")

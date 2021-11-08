@@ -20,8 +20,7 @@
 #'         B:     matrix B
 #'
 
-SEC_only_calibration = function(Xc, Xe, Xs, y,intercept, bwe, bws, utm_ev_sp, utm_st_sp,
-                                thresh_e=1e-6, thresh_s=1e-5, model){
+SEC_only_calibration = function(Xc, Xe, Xs, y,intercept, bwe, bws, utm_ev_sp, utm_st_sp, model){
   
   dist_e_sim_cal = gw.dist(utm_ev_sp, utm_ev_sp, focus=0, p=2, theta=0, longlat=F)
   dist_s_sim_cal = gw.dist(utm_st_sp, utm_st_sp, focus=0, p=2, theta=0, longlat=F)
@@ -67,7 +66,7 @@ SEC_only_calibration = function(Xc, Xe, Xs, y,intercept, bwe, bws, utm_ev_sp, ut
   ## ---------------------------------------------
   
   #create Hs
-  ncpu = 2 # init cluster parallelization
+  ncpu = 6 # init cluster parallelization
   sfInit(par=TRUE,cp=ncpu)
   reps = 1:N
   (Start.Time <- Sys.time())
@@ -99,6 +98,15 @@ SEC_only_calibration = function(Xc, Xe, Xs, y,intercept, bwe, bws, utm_ev_sp, ut
   sfStop() #stop cluster parallelization
   He = t(He)
   save(He, file=paste0(model,"/large_matrices/only_calibration_He.RData"))
+  
+  #create B
+  B = I - He - Hs + Hs %*% He
+  
+  calibration <- list("He" = He,
+                      "Hs" = Hs,
+                      "B" = B)
+  
+  return(calibration)
   
 }
 
