@@ -50,7 +50,7 @@ stationarity_check <- function(n_coef_to_check, coef_to_check, regs, y, bwe, bws
   Xe = e_dependent
   Xs = s_dependent
   
-  sec = SEC_calibration(Xc, Xe, Xs, y, "c", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp), model, paste0("stationarity_",coef_to_check))
+  sec = SEC_calibration(Xc, Xe, Xs, y, "c", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp), model, paste0("stationarity_",n_coef_to_check))
   #compute R(H0)
   N = dim(Xe)[1]
   I= diag(1,N)
