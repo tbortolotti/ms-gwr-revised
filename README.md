@@ -11,8 +11,10 @@ The purpose of a revised version of the code is to provide a user-friendly tool 
 ## Structure of the repository
 The repository is composed as follows:
 * `simulated_data_example.R`: File containing the simulation study conducted by Luca Caramenti.
-* `main.R`: R script containing the MS GWR analysis on the Italian seismic data for the PGA.
-* `data_dir`: Folder containing the data of the case study. In particular, `confini_ut33.shp` is the shape file for the Italian territory for which the analysis is performed, and `italian_data_pga.RData` contains the full dataset for the PGA measurements.
+* `main.R`: R script containing the MS GWR analysis on the Italian seismic data for the PGA, with dependence on site and event coordinates.
+* `main_midpoint.R`: R script containing the MS GWR analysis on the Italian seismic data for the PGA, with dependence on site coordinates and midpoint of site and event coordinates.
+* * `data_preparation.R` is the code used to perform data preprocessing. It loads files `data_dir/confini_ut33.shp` and `data_dir/italian_data_pga.RData` and prepares data `data_dir/utm_coordinates.RData` and `data_dir/regressors.RData` that are loaded in `main.R` for the analysis.
+* `data_dir`: Folder containing the data of the case study. In particular, `confini_ut33.shp` is the shape file for the Italian territory for which the analysis is performed, and `italian_data_pga.RData` contains the full dataset for the PGA measurements. `utm_coordinates.RData` and `regressors.RData`contain preprocessed data, that are loaded to run the analysis.
 * `functions`: Folder containing all functions used in the analysis, both for the simulation study and the case study. Each function in the folder contains a brief description of its usage and of its input and return parameters.
 
 ## Analysis of Italian seismic data
