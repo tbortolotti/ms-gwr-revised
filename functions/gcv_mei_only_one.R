@@ -23,8 +23,8 @@
 #'         gcv:    value of the gcv statistic
 #' 
 
-gcv_mei_only_one = function(bwe, bws, func, Xc, Xe, Xs, y, intercept = "c", utm_ev_sp, utm_st_sp){
-  temp = func(Xc, Xe, Xs, y, intercept, bwe, bws, utm_ev_sp, utm_st_sp)
+gcv_mei_only_one = function(bwe, bws, func, Xc, Xe, Xs, y, intercept = "c", utm_ev_sp, utm_st_sp, model){
+  temp = func(Xc, Xe, Xs, y, intercept, bwe, bws, utm_ev_sp, utm_st_sp, model, "bw_selection")
   B = temp$B
   n = length(y)
   I = diag(1,n)
