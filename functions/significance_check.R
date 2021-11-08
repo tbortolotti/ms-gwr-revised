@@ -57,7 +57,7 @@ significance_check <- function(coef_to_check, names_Xc, Xc, Xe, Xs, y, bwe,
   RH0 = t(I-H0)%*%(I-H0)
   epsilon= (I-H0)%*%y
   #load R(H1)
-  RH1 = readRDS(paste0(model,"/RH1_stationary_rotD50pga.RData"))
+  load(paste0(model,"/RH1_stationary_rotD50pga.RData"))
   #compute T
   T0 = (t(y) %*% (RH0-RH1) %*% y) / (t(y) %*% RH1 %*% y)
   #permutations

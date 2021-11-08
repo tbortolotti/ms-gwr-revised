@@ -70,7 +70,6 @@ stationarity_check <- function(n_coef_to_check, coef_to_check, regs, y, bwe, bws
   t_stat = rep(0,n_perm)
   print("Permutations")
   pb = progress_bar$new(total=n_perm, format = "  computing [:bar] :percent eta: :eta")
-  pb$tick(0)
   for (i in 1:n_perm){
     eps_star = sample(epsilon)
     y_star = H0 %*% y + eps_star

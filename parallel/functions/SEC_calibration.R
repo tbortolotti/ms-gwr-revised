@@ -69,7 +69,7 @@ SEC_calibration = function(Xc, Xe, Xs, y, intercept, bwe, bws, utm_ev_sp, utm_st
   ## ---------------------------------------------
   
   #create Hs
-  ncpu = 4 # init cluster parallelization
+  ncpu = 4
   sfInit(par=TRUE,cp=ncpu)
   reps = 1:N
   (Start.Time <- Sys.time())
@@ -81,7 +81,7 @@ SEC_calibration = function(Xc, Xe, Xs, y, intercept, bwe, bws, utm_ev_sp, utm_st
                 gauss_kernel = gauss_kernel)
   End.Time <- Sys.time()
   print(paste0("Building Hs: ",round(End.Time - Start.Time, 2)))
-  sfStop() #stop cluster parallelization
+  sfStop()
   Hs = t(Hs)
   save(Hs, file=paste0(model,"/large_matrices/SEC_",test,"_calibration_Hs.RData"))
   
@@ -98,7 +98,7 @@ SEC_calibration = function(Xc, Xe, Xs, y, intercept, bwe, bws, utm_ev_sp, utm_st
                 gauss_kernel = gauss_kernel)
   End.Time <- Sys.time()
   print(paste0("Building He: ",round(End.Time - Start.Time, 2)))
-  sfStop() #stop cluster parallelization
+  sfStop()
   He = t(He)
   save(He, file=paste0(model,"/large_matrices/SEC_",test,"_calibration_He.RData"))
   
