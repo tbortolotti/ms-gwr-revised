@@ -29,8 +29,8 @@ load("data_dir/regressors.RData")
 
 # Load functions
 source("functions/gcv_mei_only_one.R")
-source("parallel/functions/ESC_calibration.R")
-source("parallel/functions/SEC_calibration.R")
+source("functions/ESC_calibration.R")
+source("functions/SEC_calibration.R")
 source("functions/stationarity_check.R")
 source("functions/significance_check.R")
 
