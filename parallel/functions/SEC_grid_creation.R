@@ -86,7 +86,7 @@ SEC_grid_creation = function(Xc, Xe, Xs, y,intercept, bwe, bws, utm_ev_sp, utm_s
   y_tilde = y-Xc%*%beta_c
   
   #3)compute beta_e for whole grid
-  ncpu=2
+  ncpu=6
   sfInit(par=TRUE,cp=ncpu)
   reps = 1:L
   (Start.Time <- Sys.time())

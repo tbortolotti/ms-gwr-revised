@@ -23,7 +23,7 @@
 #' 
 
 
-stationarity_check <- function(coef_to_check, regs, y, bwe, bws, utm_ev_sp, utm_st_sp)
+stationarity_check <- function(coef_to_check, regs, y, bwe, bws, utm_ev_sp, utm_st_sp, model)
 {
   ## coefs
   b1 = regs$b1
@@ -59,7 +59,7 @@ stationarity_check <- function(coef_to_check, regs, y, bwe, bws, utm_ev_sp, utm_
   RH0 = t(I-H0)%*%(I-H0)
   epsilon= (I-H0)%*%y
   #load R(H1)
-  RH1 = readRDS("RH1_only_intercept_rotD50pga.RData")
+  RH1 = readRDS(paste0(model,"/RH1_only_intercept_rotD50pga.RData"))
   #compute T
   T0 = (t(y) %*% (RH0-RH1) %*% y) / (t(y) %*% RH1 %*% y)
   #permutations

@@ -20,7 +20,7 @@
 #'         B:     matrix B
 #'
 
-ESC_only_calibration = function(Xc, Xe, Xs, y,intercept, bwe, bws, utm_ev_sp, utm_st_sp){
+ESC_only_calibration = function(Xc, Xe, Xs, y,intercept, bwe, bws, utm_ev_sp, utm_st_sp, model){
   dist_e_sim_cal = gw.dist(utm_ev_sp, utm_ev_sp, focus=0, p=2, theta=0, longlat=F)
   dist_s_sim_cal = gw.dist(utm_st_sp, utm_st_sp, focus=0, p=2, theta=0, longlat=F)
   
@@ -50,27 +50,60 @@ ESC_only_calibration = function(Xc, Xe, Xs, y,intercept, bwe, bws, utm_ev_sp, ut
   He = matrix(0,N,N)
   Hs = matrix(0,N,N)
   
-  #create He
-  print("Create He")
-  pb = progress_bar$new(total=N, format = "  computing [:bar] :percent eta: :eta")
-  for (i in 1:N){
-    We = diag(gauss_kernel(dist_e_sim_cal[,i],bwe))
-    Ae = (solve((t(Xe)%*%We%*%Xe))) %*% t(Xe) %*% We
-    He[i,] = Xe[i,] %*% Ae
-    #print(c("He",i))
-    pb$tick()
+  ## FUNCTIONS ----------------------------------
+  gauss_kernel = function(d, h){
+    wgts = exp(-0.5*(d/h)^2)
+    return(wgts)
   }
   
-  #create Hs
-  print("Create Hs")
-  pb = progress_bar$new(total=N, format = "  computing [:bar] :percent eta: :eta")
-  for (i in 1:N){
+  my_fun_e = function(i, Xe, dist_e, bwe, gauss_kernel)
+  {
+    We = diag(gauss_kernel(dist_e[,i],bwe))
+    Ae = (solve((t(Xe)%*%We%*%Xe))) %*% t(Xe) %*% We
+    return(Xe[i,] %*% Ae)
+  }
+  
+  my_fun_s = function(i, Xs, He, dist_s, bws, gauss_kernel)
+  {
     Ws = diag(gauss_kernel(dist_s_sim_cal[,i],bws))
     As = (solve((t(Xs)%*%(t((I-He)))%*%Ws%*%(I-He)%*%Xs))) %*% t(Xs) %*% (t((I-He))) %*% Ws %*% (I-He)
-    Hs[i,] = Xs[i,] %*% As
-    #print(c("Hs",i))
-    pb$tick()
+    return(Xs[i,] %*% As)
   }
+  ## ---------------------------------------------
+  
+  #create He
+  ncpu = 6 # init cluster parallelization
+  sfInit(par=TRUE,cp=ncpu)
+  reps = 1:N
+  (Start.Time <- Sys.time())
+  He = sfSapply(x = reps,
+                fun = my_fun_e,
+                Xe = Xe,
+                dist_e = dist_e_sim_cal,
+                bwe = bwe,
+                gauss_kernel = gauss_kernel)
+  End.Time <- Sys.time()
+  print(paste0("Building He: ",round(End.Time - Start.Time, 2)))
+  sfStop() #stop cluster parallelization
+  He = t(He)
+  save(He, file=paste0(model,"/large_matrices/ESC_only_calibration_He.RData"))
+  
+  #create Hs
+  sfInit(par=TRUE,cp=ncpu)
+  reps = 1:N
+  (Start.Time <- Sys.time())
+  Hs = sfSapply(x = reps,
+                fun = my_fun_s,
+                Xs = Xs,
+                He = He,
+                dist_s = dist_s_sim_cal,
+                bws = bws,
+                gauss_kernel = gauss_kernel)
+  End.Time <- Sys.time()
+  print(paste0("Building Hs: ",round(End.Time - Start.Time, 2)))
+  sfStop() #stop cluster parallelization
+  Hs = t(Hs)
+  save(Hs, file=paste0(model,"/large_matrices/ESC_only_calibration_Hs.RData"))
   
   #create B
   B = I - He - Hs + He %*% Hs

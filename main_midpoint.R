@@ -31,9 +31,9 @@ dataset = readRDS("data_dir/italian_data_pga.RData")
 #source("functions/functions.R")
 source("functions/gcv_mei_only_one.R")
 source("parallel/functions/SEC_only_calibration.R")
-source("functions/ESC_only_calibration.R")
-source("functions/SEC_only_constant_intercept_calibration.R")
-source("functions/SEC_no_intercept_calibration.R")
+source("parallel/functions/ESC_only_calibration.R")
+source("parallel/functions/SEC_only_constant_intercept_calibration.R")
+source("parallel/functions/SEC_no_intercept_calibration.R")
 source("functions/gauss_kernel.R")
 source("functions/stationarity_check.R")
 source("functions/significance_check.R")
@@ -262,11 +262,13 @@ names_Xc = c("b1","b2","f1","f2","c1")
 Xe = cbind(c2,c3)
 Xs = k
 
-# NT: you may change the three matrices above accordingly to the results of the
+# NT: you may change the three matrices above accordingly to the results of
 # your stationarity checks
 
-# WARNING: I don't know what happens if there is no coefficient varying with
-#          site or with event (i.e. either Xe or Xs are null)
+# WARNING: If your stationarity tests result in no site-varying coefficients or no event-varying
+# coefficients, than you resort to a single-effect GWR. You can't use the code below, but you
+# have to rely o a single-effect GWR. NOTA PER ME: capire come funziona una regressione con
+# un solo coefficiente variabile e sviluppare la fuzione accordingly
 
 coef_to_check = "intercept" #change it among all regs that are found constant
 
@@ -281,6 +283,7 @@ p_significance = significance_check(coef_to_check = coef_to_check,
                                     utm_ev_sp     = utm_md_sp,
                                     utm_st_sp     = utm_st_sp)
 p_significance
+save(p, file=paste0("midpoint/pvals/",coef_to_check,".RData"))
 
 
 ## GCV comparison --------------------------------------------------------------
@@ -306,16 +309,16 @@ Xs = k
 
 source("parallel/functions/SEC_only_calibration.R")
 
-SEC_only_calibration(Xc        = Xc,
-                     Xe        = Xe,
-                     Xs        = Xs,
-                     y         = y,
-                     intercept = "c",
-                     bwe       = bwm,
-                     bws       = bws,
-                     utm_ev_sp = coordinates(utm_md_sp),
-                     utm_st_sp = coordinates(utm_st_sp),
-                     model     = "midpoint")
+sec = SEC_only_calibration(Xc        = Xc,
+                           Xe        = Xe,
+                           Xs        = Xs,
+                           y         = y,
+                           intercept = "c",
+                           bwe       = bwm,
+                           bws       = bws,
+                           utm_ev_sp = coordinates(utm_md_sp),
+                           utm_st_sp = coordinates(utm_st_sp),
+                           model     = "midpoint")
 
 load("midpoint/large_matrices/only_calibration_Hs.RData")
 load("midpoint/large_matrices/only_calibration_He.RData")
@@ -357,8 +360,8 @@ result = SEC_grid_creation(Xc        = Xc,
                            grid      = coords_utm,
                            model     = "midpoint")
 
-save(result, file="midpoint/large_matrices/result.RData")
-load("midpoint/large_matrices/result.RData")
+save(result, file="midpoint/large_matrices/SEC_grid_creation.RData")
+load("midpoint/large_matrices/SEC_grid_creation.RData")
 
 beta_const = result$beta_c
 
