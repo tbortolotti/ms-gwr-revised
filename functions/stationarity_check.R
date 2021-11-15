@@ -14,17 +14,17 @@
 #'                         (e.g. "b1", "b2")
 #' @param regs             matrix containing the predictor variables
 #' @param y:               response variable
-#' @param bwe:             bandwidth for event
-#' @param bws:             bandwidth for site
-#' @param utm_ev_sp:       utm coordinates of the events
-#' @param utm_st_sp:       utm coordinates of the site
+#' @param bw1:             bandwidth for event or midpoint
+#' @param bw2:             bandwidth for site
+#' @param utm_1_sp:        utm coordinates of the events or midpoints
+#' @param utm_2_sp:        utm coordinates of the site
 #' @param model:           choose among ("midpoint","benchmark") or whichever other model you're working with
 #' 
 #' @return p:              p-value of the non-parametric test
 #' 
 
 
-stationarity_check <- function(n_coef_to_check, coef_to_check, regs, y, bwe, bws, utm_ev_sp, utm_st_sp, model)
+stationarity_check <- function(n_coef_to_check, coef_to_check, regs, y, bw1, bw2, utm_1_sp, utm_2_sp, model)
 {
   ## coefs
   b1 = regs$b1
@@ -51,8 +51,9 @@ stationarity_check <- function(n_coef_to_check, coef_to_check, regs, y, bwe, bws
   Xe = e_dependent
   Xs = s_dependent
   
-  sec = SEC_calibration(Xc, Xe, Xs, y, "c", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp), model, paste0("stationarity_",n_coef_to_check))
-  
+  sec = SEC_calibration(Xc, Xe, Xs, y, "c", bw1, bw2, coordinates(utm_1_sp), coordinates(utm_2_sp), model, paste0("stationarity_",n_coef_to_check))
+  #sec = SEC_only_calibration(Xc, Xe, Xs, y, "c", bw1, bw2, coordinates(utm_1_sp), coordinates(utm_2_sp))
+
   #compute R(H0)
   N = dim(Xe)[1]
   I= diag(1,N)
@@ -62,12 +63,13 @@ stationarity_check <- function(n_coef_to_check, coef_to_check, regs, y, bwe, bws
   RH0 = t(I-H0)%*%(I-H0)
   epsilon= (I-H0)%*%y
   #load R(H1)
-  load(paste0(model,"/RH1_only_intercept_rotD50pga.RData"))
+  load(paste0(model,"/large_matrices/RH1_only_intercept_rotD50pga.RData"))
   #compute T
   T0 = (t(y) %*% (RH0-RH1) %*% y) / (t(y) %*% RH1 %*% y)
   #permutations
   n_perm = 1000
   t_stat = rep(0,n_perm)
+  set.seed(140996)
   print("Permutations")
   pb = progress_bar$new(total=n_perm, format = "  computing [:bar] :percent eta: :eta")
   for (i in 1:n_perm){

@@ -69,6 +69,7 @@ coords_utm = grid_inside_utm@coords
 coords_df_utm = as.data.frame(coords_utm)
 
 save(utm_md_sp, utm_ev_sp, utm_st_sp, coords_utm, file="data_dir/utm_coordinates.RData")
+save(utm_md, utm_ev, utm_st, shape_utm_no_lamp, file="data_dir/spacial_info_plots.RData")
 
 
 ## Build the data -------------------------------------

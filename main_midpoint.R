@@ -1,7 +1,7 @@
 # Working directory (change)
 setwd("/home/giovanni/Scrivania/teresa/ms-gwr-revised")
 
-source('package_install.R')
+#source('package_install.R')
 
 library(sf)
 library(raster)
@@ -35,11 +35,15 @@ source("functions/SEC_calibration.R")
 source("functions/stationarity_check.R")
 source("functions/significance_check.R")
 
+Xc = cbind(b1,b2,f1,f2,c1)
+Xe = cbind(c2,c3)
+Xs = k
+
 ## Selection of the optimal bandwidth -------------------------------
-bwe_tot = c(10000, 25000, 50000, 75000, 100000)
 bws_tot = c(10000, 25000, 50000, 75000, 100000)
 bwm_tot = c(10000, 25000, 50000, 75000, 100000)
-n_bwe = length(bwe_tot)
+bws_tot = c(50000, 75000, 100000)
+bwm_tot = c(25000, 50000, 75000)
 n_bws = length(bws_tot)
 n_bwm = length(bwm_tot)
 bw_table = matrix(0, n_bwm, n_bws)
@@ -49,29 +53,30 @@ colnames(bw_table) = bws_tot
 for (i in 1:n_bwm){ #i=1
   for (j in 1:n_bws){ # j=1
     print(paste0("Bandwidth midpoint: ", bwm_tot[i], " / Bandwidth site: ", bws_tot[j]))
-    bandwidth = gcv_mei_only_one(bwe       = bwm_tot[i],
-                                 bws       = bws_tot[j],
+    bandwidth = gcv_mei_only_one(bw1       = bwm_tot[i],
+                                 bw2       = bws_tot[j],
                                  func      = SEC_calibration,
                                  Xc        = Xc,
                                  Xe        = Xe,
                                  Xs        = Xs,
                                  y         = y,
                                  intercept = "c",
-                                 utm_ev_sp = coordinates(utm_md_sp),
-                                 utm_st_sp = coordinates(utm_st_sp),
+                                 utm_1_sp  = coordinates(utm_md_sp),
+                                 utm_2_sp  = coordinates(utm_st_sp),
                                  model     = "midpoint")
     bw_table[i,j] = bandwidth$gcv
+    save(bw_table, file="midpoint/bw_table.RData")
   }
 }
 
 
 
-bw_best = which(bw_table == max(bw_table), arr.ind = T)
+bw_best = which(bw_table == min(bw_table), arr.ind = T)
 bwm = bwm_tot[bw_best[1]]
 bws = bws_tot[bw_best[2]]
 
-bwm = 25000
-bws = 75000
+#bwm = 25000
+#bws = 75000
 
 ## PERMUTATION TESTS -----------------------------------------------------------
 ## Joint test for the stationarity of the coefficients --------------------
@@ -84,6 +89,7 @@ Xs = k
 ols = lm(y ~ Xc + Xe + Xs)
 
 # only the intercept is considered as constant, hence Xc is given to SEC_calibration function as empty
+source("functions/SEC_calibration.R")
 Xc = c()
 Xe = cbind(c2,c3)
 Xs = cbind(b1,b2,f1,f2,c1,k)
@@ -94,16 +100,14 @@ only_intercept = SEC_calibration(Xc        = Xc,
                                  Xs        = Xs,
                                  intercept = "c",
                                  y         = y,
-                                 bwe       = bwm,
-                                 bws       = bws,
-                                 utm_ev_sp = coordinates(utm_md_sp),
-                                 utm_st_sp = coordinates(utm_st_sp),
+                                 bw1       = bwm,
+                                 bw2       = bws,
+                                 utm_1_sp  = coordinates(utm_md_sp),
+                                 utm_2_sp  = coordinates(utm_st_sp),
                                  model     = "midpoint",
                                  test      = "only_constant_intercept")
-
 End.Time <- Sys.time()
 round(End.Time - Start.Time, 2)
-
 
 #compute R(H0)
 X = cbind(rep(1,N), Xc, Xe, Xs)
@@ -116,14 +120,14 @@ B = only_intercept$B
 Xcc = rep(1,N)
 H1 = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
 RH1 = t(I-H1)%*%(I-H1)
-save(RH1, file="midpoint/RH1_only_intercept_rotD50pga.RData")
-#use this RH1 for all the following stationarity tests
+save(RH1, file="midpoint/large_matrices/RH1_only_intercept_rotD50pga.RData")
 
 #compute T
 T0 = (t(y) %*% (RH0-RH1) %*% y) / (t(y) %*% RH1 %*% y)
 #permutations
 n_perm = 1000
 t_stat = rep(0,n_perm)
+set.seed(140996)
 print("Permutations")
 pb = progress_bar$new(total=n_perm, format = "  computing [:bar] :percent eta: :eta")
 for (i in 1:n_perm){
@@ -137,8 +141,9 @@ p
 save(p, file="midpoint/pvals/model_stationarity.RData")
 
 ## One-at-a-time test for the stationarity of coefficients ---------------------------
-n_coef_to_check = "c1" #change it among: {"b1","b2","c1","c2","c3","f1","f2","k"}
-coef_to_check = c1
+source("functions/stationarity_check.R")
+n_coef_to_check = "c2" #change it among: {"b1","b2","c1","c2","c3","f1","f2","k"}
+coef_to_check = c2
 regs = list(b1 = b1,
             b2 = b2,
             c1 = c1,
@@ -152,15 +157,18 @@ p = stationarity_check(n_coef_to_check = n_coef_to_check,
                        coef_to_check   = coef_to_check,
                        regs            = regs,
                        y               = y,
-                       bwe             = bwm,
-                       bws             = bws,
-                       utm_ev_sp       = utm_md_sp,
-                       utm_st_sp       = utm_st_sp,
+                       bw1             = bwm,
+                       bw2             = bws,
+                       utm_1_sp        = utm_md_sp,
+                       utm_2_sp        = utm_st_sp,
                        model           = "midpoint")
 p
 save(p, file=paste0("midpoint/pvals/stationarity_",n_coef_to_check,".RData"))
 End.Time <- Sys.time()
 round(End.Time - Start.Time, 2)
+
+load(paste0("midpoint/pvals/stationarity_b2.RData"))
+p
 
 ## Joint test for the stationarity of coefs found stationary -----------------------------------------------------------------------
 # H0: b1, b2, f1, f2, c1, other than the intercept, are constant
@@ -169,7 +177,7 @@ Xc = cbind(b1,b2,f1,f2,c1)
 Xe = cbind(c2,c3)
 Xs = k
 ols = lm(y ~ Xc + Xe + Xs)
-sec = SEC_calibration(Xc, Xe, Xs, y, "c", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp))
+sec = SEC_calibration(Xc, Xe, Xs, y, "c", bwm, bws, coordinates(utm_md_sp), coordinates(utm_st_sp))
 #compute R(H0)
 X = cbind(rep(1,N), Xc, Xe, Xs)
 I = diag(1,N)
@@ -182,11 +190,12 @@ B = sec$B
 Xcc = cbind(rep(1,N), Xc)
 H0 = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
 RH1 = t(I-H0)%*%(I-H0)
-save(RH1, file="midpoint/RH1_stationary_rotD50pga.RData")
+save(RH1, file="midpoint/large_matrices/RH1_stationary_rotD50pga.RData")
 T0 = (t(y) %*% (RH0-RH1) %*% y) / (t(y) %*% RH1 %*% y)
 #permutations
 n_perm = 1000
 t_stat = rep(0,n_perm)
+set.seed(140996)
 print("Permutations")
 pb = progress_bar$new(total=n_perm, format = "  computing [:bar] :percent eta: :eta")
 for (i in 1:n_perm){
@@ -217,21 +226,22 @@ Xs = k
 # un solo coefficiente variabile e sviluppare la fuzione accordingly
 
 coef_to_check = "intercept" #change it among all regs that are found constant
-
+(Start.Time <- Sys.time())
 p = significance_check(coef_to_check = coef_to_check,
                        names_Xc      = names_Xc,
                        Xc            = Xc,
                        Xe            = Xe,
                        Xs            = Xs,
                        y             = y,
-                       bwe           = bwm,
-                       bws           = bws,
-                       utm_ev_sp     = utm_md_sp,
-                       utm_st_sp     = utm_st_sp,
+                       bw1           = bwm,
+                       bw2           = bws,
+                       utm_1_sp      = utm_md_sp,
+                       utm_2_sp      = utm_st_sp,
                        model         = "midpoint")
 p
 save(p, file=paste0("midpoint/pvals/significance_",coef_to_check,".RData"))
-
+End.Time <- Sys.time()
+round(End.Time - Start.Time, 2)
 
 ## GCV comparison --------------------------------------------------------------
 # Comparison of the GCV values obtained using SEC and ESC
@@ -254,32 +264,27 @@ Xc = cbind(b1,b2,f1,f2,c1)
 Xe = cbind(c2,c3)
 Xs = k
 
+(Start.Time <- Sys.time())
 sec = SEC_calibration(Xc        = Xc,
                       Xe        = Xe,
                       Xs        = Xs,
                       y         = y,
                       intercept = "c",
-                      bwe       = bwm,
-                      bws       = bws,
-                      utm_ev_sp = coordinates(utm_md_sp),
-                      utm_st_sp = coordinates(utm_st_sp),
+                      bw1       = bwm,
+                      bw2       = bws,
+                      utm_1_sp  = coordinates(utm_md_sp),
+                      utm_2_sp  = coordinates(utm_st_sp),
                       model     = "midpoint",
                       test      = "full_computation")
-
-load("midpoint/large_matrices/full_calibration_Hs.RData")
-load("midpoint/large_matrices/full_calibration_He.RData")
+End.Time <- Sys.time()
+round(End.Time - Start.Time, 2)
 
 #create B
 N = length(y)
 I = diag(rep(1,N))
-B = I - He - Hs + Hs %*% He
-save(B, file="midpoint/large_matrices/full_calibration_B.RData")
-rm(Hs,He)
-
+B = sec$B
 Xcc = cbind(rep(1,N), Xc)
 H = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
-save(H, file="midpoint/large_matrices/full_calibration_H.RData")
-rm(B)
 epsilon= (I-H)%*%y
 delta1 = N-2*tr(H)+tr(t(H)%*%H)
 delta2 = tr((t(I-H)%*%(I-H)) %*% (t(I-H)%*%(I-H)))
@@ -290,26 +295,91 @@ sqrt(sigma2hat)
 R2 = 1-rss/tss
 R2adj = 1-(1-R2)*(N-1)/delta1
 R2adj
+save(R2adj, file="midpoint/R2adj.RData")
 
 ## Calibration  ------------------------------------------
-# Computation of the regression coefficients
-source("parallel/functions/SEC_grid_creation.R")
+# 0. Old calibration (SKIP)
+source("functions/SEC_grid_creation.R")
+
+Xc = cbind(b1,b2,f1,f2,c1)
+Xe = cbind(c2,c3)
+Xs = k
+
+(Start.Time <- Sys.time())
 result = SEC_grid_creation(Xc        = Xc,
                            Xe        = Xe,
                            Xs        = Xs,
                            y         = y,
                            intercept = "c",
-                           bwe       = bwm,
-                           bws       = bws,
-                           utm_ev_sp = coordinates(utm_md_sp),
-                           utm_st_sp = coordinates(utm_st_sp),
+                           bw1       = bwm,
+                           bw2       = bws,
+                           utm_1_sp  = coordinates(utm_md_sp),
+                           utm_2_sp  = coordinates(utm_st_sp),
                            grid      = coords_utm,
                            model     = "midpoint")
+End.Time <- Sys.time()
+round(End.Time - Start.Time, 2)
+save(result, file="midpoint/large_matrices/SEC_grid_creation_all.RData")
 
-save(result, file="midpoint/large_matrices/SEC_grid_creation.RData")
-load("midpoint/large_matrices/SEC_grid_creation.RData")
+# # 1. Computation of c1
+# #    Remove c3 and fit c1 on a dataset made of points with dJB<=80km
+# dataset = readRDS("data_dir/italian_data_pga.RData")
+# attach(dataset)
+# include = which(JB_complete <= 80)
+# Xc = cbind(b1,b2,f1,f2,c1)[include,]
+# Xe = cbind(c2,c3)[include,]
+# Xs = k[include,]
+# y_in = y[include]
+# detach(dataset)
+# 
+# utm_md_include = coordinates(utm_md_sp)[include,]
+# utm_st_include = coordinates(utm_st_sp)[include,]
+# 
+# source("functions/SEC_grid_creation.R")
+# result_c1 = SEC_grid_creation(Xc        = Xc,
+#                               Xe        = Xe,
+#                               Xs        = Xs,
+#                               y         = y_in,
+#                               intercept = "c",
+#                               bw1       = bwm,
+#                               bw2       = bws,
+#                               utm_1_sp  = utm_md_include,
+#                               utm_2_sp  = utm_st_include,
+#                               grid      = utm_st_include,
+#                               model     = "midpoint",
+#                               cal_c1    = TRUE)
+# 
+# save(result_c1, file="midpoint/large_matrices/SEC_grid_creation_c1.RData")
+# 
+# # 2. Computation of all other regression coefficients
+# #    Remove c1*(Mw-Mref)*log10(RJB) from PGA and calibrate again
+# attach(dataset)
+# y2 = y - result_c1$beta_c[6] * c1
+# 
+# Xc = cbind(b1,b2,f1,f2)
+# Xe = cbind(c2,c3)
+# Xs = k
+# 
+# detach(dataset)
+# result = SEC_grid_creation(Xc        = Xc,
+#                            Xe        = Xe,
+#                            Xs        = Xs,
+#                            y         = y2,
+#                            intercept = "c",
+#                            bw1       = bwm,
+#                            bw2       = bws,
+#                            utm_1_sp  = coordinates(utm_md_sp),
+#                            utm_2_sp  = coordinates(utm_st_sp),
+#                            grid      = coords_utm,
+#                            model     = "midpoint")
+# save(result, file="midpoint/large_matrices/SEC_grid_creation.RData")
+# 
+# load("midpoint/large_matrices/SEC_grid_creation.RData")
+# load("midpoint/large_matrices/SEC_grid_creation_c1.RData")
+load("midpoint/large_matrices/SEC_grid_creation_all.RData")
 
 beta_const = result$beta_c
+# beta_const[6] = result_c1$beta_c[6]
 
 beta_k = t(result$beta_s)
 beta_k_coord = cbind(coords_utm, t(beta_k))
@@ -327,6 +397,8 @@ beta_c3_coord = as.data.frame(beta_c3_coord)
 range(beta_c3)
 
 ## PLOTS ---------------------------------------------------------
+load("data_dir/spacial_info_plots.RData")
+load("data_dir/utm_coordinates.RData")
 # Plots of non-stationary regression coefficients
 ## k
 beta_k_bis = beta_k
@@ -339,9 +411,9 @@ beta_k_bis_coord = as.data.frame(beta_k_bis_coord)
 
 x11()
 ggplot() + 
-  geom_tile(beta_k_bis_coord, mapping = aes(x=x1, y=x2, fill=beta_k_bis))+
-  scale_fill_gradientn(colours = c("darkblue", "dodgerblue1", "cadetblue2", "white"), name = "k"
-                       ,limits = c(-1,0), breaks = c(-1, -0.5,0))+
+  geom_tile(beta_k_bis_coord, mapping = aes(x=x1, y=x2, fill=t(beta_k_bis)))+
+  scale_fill_gradientn(colours = c("darkblue", "dodgerblue1", "cadetblue2", "white"), name = "k",
+                       limits = c(-1,0), breaks = c(-1, -0.5,0))+
   geom_sf(data = shape_utm_no_lamp, size = 1.6, color = "black", fill = NA )+
   geom_point(data = utm_st, aes(x=longitude_st, y=latitude_st), fill= 'firebrick3',
              size = 1, shape = 21, stroke = 0.7)+

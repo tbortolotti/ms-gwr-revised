@@ -19,10 +19,10 @@
 #' @param Xe:              matrix of event-varying predictor variables
 #' @param Xs:              matrix of site-varying predictor variables
 #' @param y:               response variable
-#' @param bwe:             bandwidth for event
-#' @param bws:             bandwidth for site
-#' @param utm_ev_sp:       utm coordinates of the events
-#' @param utm_st_sp:       utm coordinates of the site
+#' @param bw1:             bandwidth for event or midpoint
+#' @param bw2:             bandwidth for site
+#' @param utm_1_sp:        utm coordinates of the events
+#' @param utm_2_sp:        utm coordinates of the site
 #' @param model:           choose among ("midpoint","benchmark") or whichever other model you're working with
 #' 
 #' @return p:              p-value of the non-parametric test
@@ -30,8 +30,8 @@
 
 
 
-significance_check <- function(coef_to_check, names_Xc, Xc, Xe, Xs, y, bwe,
-                               bws, utm_ev_sp, utm_st_sp, model)
+significance_check <- function(coef_to_check, names_Xc, Xc, Xe, Xs, y, bw1,
+                               bw2, utm_1_sp, utm_2_sp, model)
 {
   N = dim(Xc)[1]
 
@@ -40,9 +40,9 @@ significance_check <- function(coef_to_check, names_Xc, Xc, Xe, Xs, y, bwe,
   
   if(coef_to_check=="intercept")
   {
-    sec_null = SEC_calibration(Xc, Xe, Xs, y, "no", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp), model, paste0("significance_",coef_to_check))
+    sec_null = SEC_calibration(Xc, Xe, Xs, y, "no", bw1, bw2, coordinates(utm_1_sp), coordinates(utm_2_sp), model, paste0("significance_",coef_to_check))
   } else {
-    sec_null = SEC_calibration(Xc, Xe, Xs, y, "c", bwe, bws, coordinates(utm_ev_sp), coordinates(utm_st_sp), model, paste0("significance_",coef_to_check))
+    sec_null = SEC_calibration(Xc, Xe, Xs, y, "c", bw1, bw2, coordinates(utm_1_sp), coordinates(utm_2_sp), model, paste0("significance_",coef_to_check))
   }
   #compute R(H0)
   I= diag(1,N)
@@ -57,15 +57,15 @@ significance_check <- function(coef_to_check, names_Xc, Xc, Xe, Xs, y, bwe,
   RH0 = t(I-H0)%*%(I-H0)
   epsilon= (I-H0)%*%y
   #load R(H1)
-  load(paste0(model,"/RH1_stationary_rotD50pga.RData"))
+  load(paste0(model,"/large_matrices/RH1_stationary_rotD50pga.RData"))
   #compute T
   T0 = (t(y) %*% (RH0-RH1) %*% y) / (t(y) %*% RH1 %*% y)
   #permutations
   n_perm = 1000
   t_stat = rep(0,n_perm)
+  set.seed(140996)
   print("Permutations")
   pb = progress_bar$new(total=n_perm, format = "  computing [:bar] :percent eta: :eta")
-  pb$tick(0)
   for (i in 1:n_perm){
     eps_star = sample(epsilon)
     y_star = H0 %*% y + eps_star

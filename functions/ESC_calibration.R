@@ -76,25 +76,24 @@ ESC_calibration = function(Xc, Xe, Xs, y,intercept, bwe, bws, utm_ev_sp, utm_st_
   
   #create He
   ncpu = 4 # init cluster parallelization
-  sfInit(par=TRUE,cp=ncpu)
   reps = 1:N
   (Start.Time <- Sys.time())
+  sfInit(par=TRUE,cp=ncpu)
   He = sfSapply(x = reps,
                 fun = my_fun_e,
                 Xe = Xe,
                 dist_e = dist_e_sim_cal,
                 bwe = bwe,
                 gauss_kernel = gauss_kernel)
+  sfStop() #stop cluster parallelization
   End.Time <- Sys.time()
   print(paste0("Building He: ",round(End.Time - Start.Time, 2)))
-  sfStop() #stop cluster parallelization
   He = t(He)
   save(He, file=paste0(model,"/large_matrices/ESC_",test,"_calibration_He.RData"))
   
   #create Hs
-  sfInit(par=TRUE,cp=ncpu)
-  reps = 1:N
   (Start.Time <- Sys.time())
+  sfInit(par=TRUE,cp=ncpu)
   Hs = sfSapply(x = reps,
                 fun = my_fun_s,
                 Xs = Xs,
@@ -102,9 +101,9 @@ ESC_calibration = function(Xc, Xe, Xs, y,intercept, bwe, bws, utm_ev_sp, utm_st_
                 dist_s = dist_s_sim_cal,
                 bws = bws,
                 gauss_kernel = gauss_kernel)
+  sfStop() #stop cluster parallelization
   End.Time <- Sys.time()
   print(paste0("Building Hs: ",round(End.Time - Start.Time, 2)))
-  sfStop() #stop cluster parallelization
   Hs = t(Hs)
   save(Hs, file=paste0(model,"/large_matrices/ESC_",test,"_calibration_Hs.RData"))
   
