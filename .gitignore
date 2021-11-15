@@ -1,6 +1,10 @@
-midpoint
 benchmark
-parallel
+midpoint
+new_benchmark
+#parallel
+
+bw_table.RData
+check_bandwidth_impact.R
 
 msgwr_seismological_data_notebook.Rmd
 
