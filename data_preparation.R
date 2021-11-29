@@ -19,6 +19,8 @@ cat("\014")
 # Load data
 dataset = readRDS("data_dir/italian_data_pga.RData")
 
+# write.csv(dataset, "data_dir/italian_data_pga.csv")
+
 # shapefiles
 shape_utm = st_read('data_dir/confini_ut33.shp')
 
@@ -37,11 +39,18 @@ for (i in 12:57){
   shape_utm_no_sardinia$geometry[[1]][[5]] = NULL
 }
 
+# Remove Sortino
+SRT.lat = 37.16657
+SRT.long = 15.05421
+
+SRT.idx = 4632
+dataset = dataset[-SRT.idx,]
+
 # Projection of event and site coordinates to work with UTM33
 latitude_ev = dataset$ev_latitude
 longitude_ev = dataset$ev_longitude
 long_lat_ev = cbind(longitude_ev, latitude_ev)
-utm_ev = project(long_lat_ev, "+proj=utm +zone=33 ellps=WGS84") 
+utm_ev = project(long_lat_ev, "+proj=utm +zone=33 ellps=WGS84")
 utm_ev = as.data.frame(utm_ev)
 long_lat_ev = as.data.frame(long_lat_ev)
 

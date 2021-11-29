@@ -16,8 +16,6 @@
 #' @param grid:        Matrix of the coordinates of grid points where to evaluate
 #'                     the regression coefficients. dim(grid) = [n points] [2]
 #' @param model:       Choose among ("midpoint","benchmark") or whichever other model to be tested
-#' @param cal_c1:      TRUE if you're calibrating c1, FALSE otherwise (default). We use it to early
-#'                     stop the calibration for c1.
 #' 
 #' @return a six-element list with the following components:
 #'         beta_c:     matrix of constant coefficients, evaluated on the grid points.
@@ -29,7 +27,7 @@
 #'
 
 SEC_grid_creation = function(Xc, Xe, Xs, y,intercept, bw1, bw2, utm_1_sp, utm_2_sp, grid,
-                             model, cal_c1=FALSE, bw_impact=FALSE, sec=NULL){
+                             model, bw_impact=FALSE, sec=NULL){
   dist_e_sim = gw.dist(utm_1_sp, grid, focus=0, p=2, theta=0, longlat=F)
   dist_s_sim = gw.dist(utm_2_sp, grid, focus=0, p=2, theta=0, longlat=F)
   
@@ -92,16 +90,6 @@ SEC_grid_creation = function(Xc, Xe, Xs, y,intercept, bw1, bw2, utm_1_sp, utm_2_
   
   #1)compute beta_c
   beta_c = solve(t(Xc)%*%t(B)%*%B%*%Xc)%*%t(Xc)%*%t(B)%*%B%*%y
-  
-  if(cal_c1)
-  {
-    beta_s <- NULL
-    beta_e <- NULL
-    betas <- list("beta_c" = beta_c, 
-                  "beta_s" = beta_s,
-                  "beta_e" = beta_e)
-    return(betas)
-  }
   
   #2)compute y_tilde
   y_tilde = y-Xc%*%beta_c

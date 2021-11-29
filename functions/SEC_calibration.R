@@ -13,7 +13,7 @@
 #' @param bw2:         bandwidth for site
 #' @param utm_1_sp:    utm coordinates of the events or midpoints
 #' @param utm_2_sp:    utm coordinates of the site
-#' @param model:       choose among ("midpoint","benchmark") or whichever other model you're working with
+#' @param model:       choose among ("midpoint","benchmark") or whichever other model you're working with. It is for saving purposes.
 #' @param test:        It is a name we give to the calibration and it is a parameter that we use to save
 #'                     the large matrices generated
 #' 
@@ -23,7 +23,7 @@
 #'         B:     matrix B
 #'
 
-SEC_calibration = function(Xc, Xe, Xs, y, intercept, bw1, bw2, utm_1_sp, utm_2_sp, model, test){
+SEC_calibration = function(Xc, Xe, Xs, y, intercept, bw1, bw2, utm_1_sp, utm_2_sp, model, test="NULL"){
   
   dist_e_sim_cal = gw.dist(utm_1_sp, utm_1_sp, focus=0, p=2, theta=0, longlat=F)
   dist_s_sim_cal = gw.dist(utm_2_sp, utm_2_sp, focus=0, p=2, theta=0, longlat=F)
@@ -82,6 +82,7 @@ SEC_calibration = function(Xc, Xe, Xs, y, intercept, bw1, bw2, utm_1_sp, utm_2_s
   sfStop()
   End.Time <- Sys.time()
   print(paste0("Building Hs: ",round(End.Time - Start.Time, 2)))
+  
   Hs = t(Hs)
   if(test=="full_computation")
   {

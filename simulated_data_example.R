@@ -1,29 +1,45 @@
-## Load --------------------------------------------------------------
-
 # Working directory (change)
-setwd("C:/Users/Teresa Bortolotti/Documents/R/ms-gwr-reviewed")
+setwd("/home/giovanni/Scrivania/teresa/ms-gwr-revised")
 
-# Libraries
-library(plot3D)
-library(GWmodel)
-library(psych)
+# source('package_install.R')
+
+library(sf)
+library(raster)
 library(ggplot2)
-library(reshape2)
+library(rgdal) 
+library(GWmodel)
+library(cowplot)
+library(geosphere)
+library(psych)
 library(pracma)
+library(reshape2)
+library(plot3D)
+library(progress)
+library(ggplot2)
+library(snowfall)
 
-# Functions
-source("functions.R")
+rm(list=ls())
+graphics.off()
+cat("\014")
 
-## Build the grids ----------------------------------------------------
-# We build two grids in a range from -5 to 5 with step equal to 0.5,
-# in order to have station- and event-related coordinates
+## Load functions
+source("functions/simulation/functions.R")
+source("functions/simulation/bw_cv.R")
+source("functions/simulation/SEC_calibration.R")
+source("functions/simulation/ESC_calibration.R")
+source("functions/simulation/emgwr_calibration_prediction.R")
+source("functions/simulation/mixed_SC_calibration.R")
+source("functions/simulation/ESC_general.R")
+source("functions/simulation/SEC_general.R")
+
+## Building the regression coefficients --------------------------------------------------------------
+## Two grids in the range -5 5 are built in order to have the coordinates of station and event
 inf = -5
 sup = 5
 step = 0.5
 x = s1 = s2 = e1 = e2 = seq(inf, sup, by = step)
 adj = (length(x)+1)/2
 
-# grid_e_sim is a 441x2 matrix, that for every location saves its event coordinates
 grid_e_sim = matrix(0,(length(e1)*length(e2)),2)
 for (i in 1:length(e1)){
   for (j in 1:length(e2)){
@@ -31,24 +47,21 @@ for (i in 1:length(e1)){
   }
 }
 
-# grid_s_sim is a 441x2 matrix, that for every location saves its site coordinates
 grid_s_sim = matrix(0,(length(s1)*length(s2)),2)
 for (i in 1:length(s1)){
   for (j in 1:length(s2)){
     grid_s_sim[j+(i-1)*length(s2),] = c(s1[i],s2[j])
   }
 }
-# WARNING: grid_e_sim and grid_s_sim are equal at this point
 
-
-## Definition of the regression coefficients ------------------------------------
+#The regression coefficients are set and, in the case of spatial non-stationarity, they are also plotted----
 #beta_c intercept
 beta_c_intercept_true = 8
 
 #beta_c variable
 beta_c_variable_true = 4
 
-x11()
+png(file=paste0("plots/simulation/true_coefficients.png"), width=8000, height=5000, units="px", res=800)
 par(mfrow=c(1,2), mai = c(0.4, 0.4, 0.4, 0.4))
 
 #beta_e variable
@@ -102,14 +115,14 @@ persp3D(s1,s2,beta_s_variable_true, colvar = beta_s_variable_true,theta=20,
         #contour = list(col = "grey", side = c("zmin", "z")),
         main=expression(paste(beta["1S"]))
 )
+dev.off()
 
-## Dataset construction --------------------------------------------
-# Creation of a regression model y ~ Beta0 + Beta.c*Xc + Beta.e*Xe + Beta.s*Xs, where:
-# - Beta0 stationary intercept
-# - Beta.c stationary coefficient
-# - Beta.e event-dependent coefficient
-# - Beta.s site-dependent covariate
-# - Xc, Xe, Xs are extracted from three normal distributions
+## Building covariates ----------------------------------------------------------------------------------------
+## Three covariates are built:
+## - stationary covariate
+## - site-dependent covariate
+## - event-dependent covariate
+## After building a random error term, the responses of the model are computed
 
 #create X
 set.seed(6494)
@@ -146,12 +159,11 @@ for (i in 1:n){
     epsilon[i]
 }
 
-# Creation of the simulation subset -------------------------------------
-# The next step is to create our simulation subset, made of 80 elements picked
-# randomly from the generated dataset
+
+#The next step is to create our simulation subset, made of 80 elements picked casually from our generated dataset----
 set.seed(2803)
-n_sample = 80
-lines = sample(1:n, n_sample)
+N = 80
+lines = sample(1:n, N)
 ordered_lines = sort(lines)
 X_sim = X_coords[ordered_lines,]
 y_sim_c = yc[ordered_lines]
@@ -166,37 +178,37 @@ for (i in 1:length(s1)){
 coords_e_sim = cbind(X_sim$E1, X_sim$E2)
 coords_s_sim = cbind(X_sim$S1, X_sim$S2)
 
-# Bandwidth selection ------------------------------------------------
-# Selection of the best bandwidth and of the best method among ESC and SEC.
-# Notice that bw_e = bw_s in this example
+## Selection of the optimal bandwidth --------------------------------------------------------------
+## Notice that here we always check models with bwe=bws
+## In this context, we also check which one is best to be used between ESC and SEC algorithms.
 
 bw_sec = bw_cv(bw_min    = 0.5,
                bw_max    = 3.2,
                step      = 0.15,
                f         = 80,
-               func      = SEC_only_calibration,
+               func      = SEC_calibration,
                method    = "sec",
                Xc        = X_sim$Xc_var,
                Xe        = X_sim$Xe_var,
                Xs        = X_sim$Xs_var,
                y         = y_sim_c,
                intercept = "c",
-               utm_ev_sp = coords_e_sim,
-               utm_st_sp = coords_s_sim)
+               utm_1_sp  = coords_e_sim,
+               utm_2_sp  = coords_s_sim)
 
-bw_sec = bw_cv(bw_min    = 0.5,
+bw_esc = bw_cv(bw_min    = 0.5,
                bw_max    = 3.2,
                step      = 0.15,
                f         = 80,
-               func      = SEC_only_calibration,
+               func      = ESC_calibration,
                method    = "esc",
                Xc        = X_sim$Xc_var,
                Xe        = X_sim$Xe_var,
                Xs        = X_sim$Xs_var,
                y         = y_sim_c,
                intercept = "c",
-               utm_ev_sp = coords_e_sim,
-               utm_st_sp = coords_s_sim)
+               utm_1_sp  = coords_e_sim,
+               utm_2_sp  = coords_s_sim)
 
 cvsum_sec = bw_sec[[2]][,2]
 cvsum_esc = bw_esc[[2]][,2]
@@ -219,33 +231,38 @@ ggplot(melted, aes(x=bws, y=value, col=variable)) +
   geom_vline(xintercept = 1.25, size = 1.2, colour="red3")+
   coord_cartesian(xlim = c(0.6, 3.1),ylim = c(800, 3400))+
   geom_point(size = 4)
-bwe = bws = 1.25 #computed with code before, results are saved
-#Both ESC and SEC lead to bw_e = bw_s = 1.25, but ESC performs better as far as CVSS is concerned.
 
+ggsave(filename = "bandwidth_cv.png",
+       plot = last_plot(),
+       device = NULL,
+       path = "plots/simulation",
+       scale = 1,
+       limitsize = FALSE,
+       dpi = 320)
 
-## Permutation tests ---------------------------------------------------
-# Now we proceed by carrying out the permutation test, to verify if we are
-# considering the right model. To carry out all these tests, we use the bandwidth
-# which is found for the complete model in the previous point.
+dev.off()
 
-## Test the introduction of spatial non-stationarity
-# H0: at least one coefficient is stationary
-# H1: all coefficients are non-stationary
-# At first we verify if it is reasonable to introduce spatial non-stationarity
-# OLS vs completely varying
-ols = lm(y_sim_c ~ X_sim$Xc_var + X_sim$Xe_var + X_sim$Xs_var)
+## Set optimal bandiwdths
 bwe = bws = 1.25
-esc_only_intercept = ESC_only_constant_intercept_calibration(Xe        = cbind(X_sim$Xc_var, X_sim$Xe_var),
-                                                             Xs        = X_sim$Xs_var,
-                                                             y         = y_sim_c,
-                                                             bwe       = bwe,
-                                                             bws       = bws,
-                                                             utm_ev_sp = coords_e_sim,
-                                                             utm_st_sp = coords_s_sim)
+
+## Permutation tests for spatial non-stationarity --------------------------------------------------------------
+# OLS vs completely varying model
+ols = lm(y_sim_c ~ X_sim$Xc_var + X_sim$Xe_var + X_sim$Xs_var)
+
+
+esc_only_intercept = ESC_calibration(Xc        = c(),
+                                     Xe        = cbind(X_sim$Xc_var,X_sim$Xe_var),
+                                     Xs        = X_sim$Xs_var,
+                                     y         = y_sim_c,
+                                     intercept = "c",
+                                     bw1       = bwe,
+                                     bw2       = bws,
+                                     utm_1_sp  = coords_e_sim,
+                                     utm_2_sp  = coords_s_sim)
 
 #compute R(H0)
-X = cbind(rep(1,n_sample), X_sim$Xc_var, X_sim$Xe_var, X_sim$Xs_var)
-I = diag(1,n_sample)
+X = cbind(rep(1,N), X_sim$Xc_var, X_sim$Xe_var, X_sim$Xs_var)
+I = diag(1,N)
 Hols = X%*%(solve(t(X)%*%X))%*%t(X)
 RH0 = t(I-Hols)%*%(I-Hols)
 eps = (I-Hols)%*%y_sim_c
@@ -255,27 +272,48 @@ Xcc = rep(1,dim(X_sim)[1])
 H1 = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
 RH1 = t(I-H1)%*%(I-H1)
 #compute T
-T0 = (t(y_sim_c) %*% (RH0-RH1) %*% y_sim_c) / (t(y_sim_c) %*% RH1 %*% y_sim_c)
+T0 = (t(y_sim_c) %*% (RH0-RH1) %*% y_sim_c) / (t(y_sim_c) %*% RH1 %*% y_sim_c)     
 #permutations
 n_perm = 1000
 t_stat = rep(0,n_perm)
 set.seed(6494)
+pb = progress_bar$new(total=n_perm, format = "  computing [:bar] :percent eta: :eta")
 for (i in 1:n_perm){
   eps_star = sample(eps)
   y_star = Hols %*% y_sim_c + eps_star
   t_stat[i] = (t(y_star) %*% (RH0-RH1) %*% y_star) / (t(y_star) %*% RH1 %*% y_star)
+  pb$tick()
 }
 p = sum(t_stat>as.numeric(T0))/n_perm
 p
 
-## Stationarity of the coefficients tested one-at-a-time
+# Non-stationarity of Xc
+# We indeed expect it to be constant, i.e. to obtain a high p-value
 
-# Check if Beta.c is constant
 #calibrate models under H0 and H1
-esc = ESC_only_calibration(X_sim$Xc_var, X_sim$Xe_var, X_sim$Xs_var, y_sim_c, "c", bwe, bws, coords_e_sim, coords_s_sim)
-esc_only_intercept = ESC_only_constant_intercept_calibration(cbind(X_sim$Xc_var, X_sim$Xe_var), X_sim$Xs_var, y_sim_c, bwe, bws, coords_e_sim, coords_s_sim)
+esc = ESC_calibration(Xc        = X_sim$Xc_var,
+                      Xe        = X_sim$Xe_var,
+                      Xs        = X_sim$Xs_var,
+                      y         = y_sim_c,
+                      intercept = "c",
+                      bw1       = bwe,
+                      bw2       = bws,
+                      utm_1_sp  = coords_e_sim,
+                      utm_2_sp  = coords_s_sim)
+
+
+esc_only_intercept = ESC_calibration(Xc        = c(),
+                                     Xe        = cbind(X_sim$Xc_var,X_sim$Xe_var),
+                                     Xs        = X_sim$Xs_var,
+                                     y         = y_sim_c,
+                                     intercept = "c",
+                                     bw1       = bwe,
+                                     bw2       = bws,
+                                     utm_1_sp  = coords_e_sim,
+                                     utm_2_sp  = coords_s_sim)
+
 #compute R(H0)
-I= diag(1,n_sample)
+I= diag(1,N)
 B = esc$B
 Xcc = cbind(rep(1,dim(X_sim)[1]), X_sim$Xc_var)
 H0 = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
@@ -292,20 +330,41 @@ T0 = (t(y_sim_c) %*% (RH0-RH1) %*% y_sim_c) / (t(y_sim_c) %*% RH1 %*% y_sim_c)
 n_perm = 1000
 t_stat = rep(0,n_perm)
 set.seed(6494)
+pb = progress_bar$new(total=n_perm, format = "  computing [:bar] :percent eta: :eta")
 for (i in 1:n_perm){
   eps_star = sample(eps)
   y_star = H0 %*% y_sim_c + eps_star
   t_stat[i] = (t(y_star) %*% (RH0-RH1) %*% y_star) / (t(y_star) %*% RH1 %*% y_star)
+  pb$tick()
 }
 p_xc = sum(t_stat>as.numeric(T0))/n_perm
 p_xc
 
-# Check if Beta.e is constant
+# Non-stationarity of Xe
 #calibrate models under H0 and H1
-esc = ESC_only_calibration(X_sim$Xe_var, X_sim$Xc_var, X_sim$Xs_var, y_sim_c, "c", bwe, bws, coords_e_sim, coords_s_sim)
-esc_only_intercept = ESC_only_constant_intercept_calibration(cbind(X_sim$Xe_var, X_sim$Xc_var), X_sim$Xs_var, y_sim_c, bwe, bws, coords_e_sim, coords_s_sim)
+esc = ESC_calibration(Xc        = X_sim$Xe_var,
+                      Xe        = X_sim$Xc_var,
+                      Xs        = X_sim$Xs_var,
+                      y         = y_sim_c,
+                      intercept = "c",
+                      bw1       = bwe,
+                      bw2       = bws,
+                      utm_1_sp  = coords_e_sim,
+                      utm_2_sp  = coords_s_sim)
+
+
+esc_only_intercept = ESC_calibration(Xc        = c(),
+                                     Xe        = cbind(X_sim$Xc_var,X_sim$Xe_var),
+                                     Xs        = X_sim$Xs_var,
+                                     y         = y_sim_c,
+                                     intercept = "c",
+                                     bw1       = bwe,
+                                     bw2       = bws,
+                                     utm_1_sp  = coords_e_sim,
+                                     utm_2_sp  = coords_s_sim)
+
 #compute R(H0)
-I= diag(1,n_sample)
+I= diag(1,N)
 B = esc$B
 Xcc = cbind(rep(1,dim(X_sim)[1]), X_sim$Xe_var)
 H0 = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
@@ -321,23 +380,39 @@ T0 = (t(y_sim_c) %*% (RH0-RH1) %*% y_sim_c) / (t(y_sim_c) %*% RH1 %*% y_sim_c)
 #permutations
 n_perm = 1000
 t_stat = rep(0,n_perm)
+pb = progress_bar$new(total=n_perm, format = "  computing [:bar] :percent eta: :eta")
 for (i in 1:n_perm){
   eps_star = sample(eps)
   y_star = H0 %*% y_sim_c + eps_star
   t_stat[i] = (t(y_star) %*% (RH0-RH1) %*% y_star) / (t(y_star) %*% RH1 %*% y_star)
+  pb$tick()
 }
 p_xe = sum(t_stat>as.numeric(T0))/n_perm
 p_xe
 
-# Check if Beta.s is constant
-#calibrate models under H0 and H1
-esc = mixed_SC_calibration(X_sim$Xs_var, cbind(X_sim$Xe_var, X_sim$Xc_var), y_sim_c, 1.25, "c", coords_e_sim)
-esc_only_intercept = ESC_only_constant_intercept_calibration(cbind(X_sim$Xe_var, X_sim$Xc_var), X_sim$Xs_var, y_sim_c, bwe, bws, coords_e_sim, coords_s_sim)
+# Non-stationarity of Xs
+# calibrate models under H0 and H1
+esc = mixed_SC_calibration(Xc           = X_sim$Xs_var,
+                           Xs           = cbind(X_sim$Xe_var, X_sim$Xc_var),
+                           y            = y_sim_c,
+                           bw           = 1.25,
+                           intercept    = "c",
+                           utm_sp       = coords_e_sim)
+
+esc_only_intercept = ESC_calibration(Xc        = c(),
+                                     Xe        = cbind(X_sim$Xe_var, X_sim$Xc_var),
+                                     Xs        = X_sim$Xs_var,
+                                     y         = y_sim_c,
+                                     intercept = "c",
+                                     bw1       = bwe,
+                                     bw2       = bws,
+                                     utm_1_sp  = coords_e_sim,
+                                     utm_2_sp  = coords_s_sim)
+
 #compute R(H0)
-I= diag(1,n_sample)
+I= diag(1,N)
 Hs = esc$Hs
 Xcc = cbind(rep(1,dim(X_sim)[1]), X_sim$Xs_var)
-# H0 = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
 H0 = Hs + (I-Hs)%*%Xcc%*%solve(t(Xcc)%*%t(I-Hs)%*%(I-Hs)%*%Xcc)%*%t(Xcc)%*%t(I-Hs)%*%(I-Hs)
 RH0 = t(I-H0)%*%(I-H0)
 eps = (I-H0)%*%y_sim_c
@@ -351,28 +426,47 @@ T0 = (t(y_sim_c) %*% (RH0-RH1) %*% y_sim_c) / (t(y_sim_c) %*% RH1 %*% y_sim_c)
 #permutations
 n_perm = 1000
 t_stat = rep(0,n_perm)
+pb = progress_bar$new(total=n_perm, format = "  computing [:bar] :percent eta: :eta")
 for (i in 1:n_perm){
   eps_star = sample(eps)
   y_star = H0 %*% y_sim_c + eps_star
   t_stat[i] = (t(y_star) %*% (RH0-RH1) %*% y_star) / (t(y_star) %*% RH1 %*% y_star)
+  pb$tick()
 }
 p_xs = sum(t_stat>as.numeric(T0))/n_perm
 p_xs
 
-## Significance of the stationary coefficients
-# Check if Beta0 is null
+## Permutation tests for the significance of stationary coefficients ---------------------------------------------
+# Check if the intercept is significantly different from 0
+## Qui sono quasi sicura ci sia un errore nella definizione dei modelli sotto H0 e H1, ma va beh
+## me ne preoccupo solo se viene fuori che il modello è giusto
 #calibrate models under H0 and H1
-esc_null = mixed_SC_no_intercept_calibration(X_sim$Xc_var, X_sim$Xs_var, y_sim_c, 1.25, coords_s_sim)
-esc = ESC_only_calibration(X_sim$Xc_var, X_sim$Xe_var, X_sim$Xs_var, y_sim_c, "c", bwe, bws, coords_e_sim, coords_s_sim)
+esc_null = mixed_SC_calibration(Xc           = X_sim$Xc_var,
+                                Xs           = X_sim$Xs_var,
+                                y            = y_sim_c,
+                                bw           = 1.25,
+                                intercept    = "null",
+                                utm_sp       = coords_s_sim)
+
+esc = ESC_calibration(Xc        = c(),
+                      Xe        = cbind(X_sim$Xe_var, X_sim$Xc_var),
+                      Xs        = X_sim$Xs_var,
+                      y         = y_sim_c,
+                      intercept = "c",
+                      bw1       = bwe,
+                      bw2       = bws,
+                      utm_1_sp  = coords_e_sim,
+                      utm_2_sp  = coords_s_sim)
+
 #compute R(H0)
-I= diag(1,n_sample)
+I= diag(1,N)
 Hs = esc_null$Hs
 Xcc = cbind(rep(1,dim(X_sim)[1]), X_sim$Xc_var)
 H0 = Hs + (I-Hs)%*%Xcc%*%solve(t(Xcc)%*%t(I-Hs)%*%(I-Hs)%*%Xcc)%*%t(Xcc)%*%t(I-Hs)%*%(I-Hs)
 RH0 = t(I-H0)%*%(I-H0)
 eps = (I-H0)%*%y_sim_c
 #compute R(H1)
-I= diag(1,n_sample)
+I= diag(1,N)
 B = esc$B
 Xcc = cbind(rep(1,dim(X_sim)[1]), X_sim$Xc_var)
 H1 = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
@@ -382,28 +476,46 @@ T0 = (t(y_sim_c) %*% (RH0-RH1) %*% y_sim_c) / (t(y_sim_c) %*% RH1 %*% y_sim_c)
 #permutations
 n_perm = 1000
 t_stat = rep(0,n_perm)
+pb = progress_bar$new(total=n_perm, format = "  computing [:bar] :percent eta: :eta")
 for (i in 1:n_perm){
   eps_star = sample(eps)
   y_star = H0 %*% y_sim_c + eps_star
   t_stat[i] = (t(y_star) %*% (RH0-RH1) %*% y_star) / (t(y_star) %*% RH1 %*% y_star)
+  pb$tick()
 }
 p_intercept_null = sum(t_stat>as.numeric(T0))/n_perm
 p_intercept_null
 
-# Check if Beta.c is null
+#check if Xc is null
+## Anche questo penso che sia sbagliato ma nel caso anche qui ci penso a posteriori
 #calibrate models under H0 and H1
-esc_null = mixed_SC_no_intercept_calibration(rep(1,length(X_sim$Xe_var)), X_sim$Xe_var, y_sim_c, 1.25, coords_e_sim)
-esc = ESC_only_calibration(X_sim$Xc_var, X_sim$Xe_var, X_sim$Xs_var, y_sim_c, "c", bwe, bws, coords_e_sim, coords_s_sim)
+
+esc_null = mixed_SC_calibration(Xc           = c(),
+                                Xs           = X_sim$Xe_var,
+                                y            = y_sim_c,
+                                bw           = 1.25,
+                                intercept    = "c",
+                                utm_sp       = coords_e_sim)
+
+esc = ESC_calibration(Xc        = X_sim$Xc_var,
+                      Xe        = X_sim$Xe_var,
+                      Xs        = X_sim$Xs_var,
+                      y         = y_sim_c,
+                      intercept = "c",
+                      bw1       = bwe,
+                      bw2       = bws,
+                      utm_1_sp  = coords_e_sim,
+                      utm_2_sp  = coords_s_sim)
 
 #compute R(H0)
-I= diag(1,n_sample)
+I= diag(1,N)
 Hs = esc_null$Hs
 Xcc = cbind(rep(1,dim(X_sim)[1]), X_sim$Xc_var)
 H0 = Hs + (I-Hs)%*%Xcc%*%solve(t(Xcc)%*%t(I-Hs)%*%(I-Hs)%*%Xcc)%*%t(Xcc)%*%t(I-Hs)%*%(I-Hs)
 RH0 = t(I-H0)%*%(I-H0)
 eps = (I-H0)%*%y_sim_c
 #compute R(H1)
-I= diag(1,n_sample)
+I= diag(1,N)
 B = esc$B
 Xcc = cbind(rep(1,dim(X_sim)[1]), X_sim$Xc_var)
 H1 = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
@@ -413,26 +525,34 @@ T0 = (t(y_sim_c) %*% (RH0-RH1) %*% y_sim_c) / (t(y_sim_c) %*% RH1 %*% y_sim_c)
 #permutations
 n_perm = 1000
 t_stat = rep(0,n_perm)
+pb = progress_bar$new(total=n_perm, format = "  computing [:bar] :percent eta: :eta")
 for (i in 1:n_perm){
   eps_star = sample(eps)
   y_star = H0 %*% y_sim_c + eps_star
   t_stat[i] = (t(y_star) %*% (RH0-RH1) %*% y_star) / (t(y_star) %*% RH1 %*% y_star)
+  pb$tick()
 }
 p_xc_null = sum(t_stat>as.numeric(T0))/n_perm
 p_xc_null
 
-## Calibration ------------------------------------------------------------
-# We can now execute the whole calibration, using the previously obtained results
-# to set parameters and methods
+## Full calibration of the model ---------------------------------------------------------------------------------
+
 bwe = bws = 1.25
-esc = ESC_general(X_sim$Xc_var, X_sim$Xe_var, X_sim$Xs_var, y_sim_c, "c", bwe, bws, coords_e_sim, coords_s_sim, as.matrix(grid_sim))
+esc = ESC_general(Xc        = X_sim$Xc_var,
+                  Xe        = X_sim$Xe_var,
+                  Xs        = X_sim$Xs_var,
+                  y         = y_sim_c,
+                  intercept = "c",
+                  bw1       = bwe,
+                  bw2       = bws,
+                  utm_1_sp  = coords_e_sim,
+                  utm_2_sp  = coords_s_sim,
+                  grid      = as.matrix(grid_sim))
 
 betas_c = esc$beta_c
 betas_c
 
-## Comparison of estimated coefficients with their true values ------------
-# The spatially varying coefficients can be graphically compared with the
-# true ones
+#The spatially varying coefficients can be graphically compared with the true ones----
 beta_s = esc$beta_s
 beta_e = esc$beta_e
 
@@ -454,7 +574,7 @@ for (i in 1:length(e1)){
   }
 }
 
-x11()
+png(file=paste0("plots/simulation/coefficient_estimates.png"), width=8000, height=5000, units="px", res=800)
 par(mfrow=c(2,2),  mai = c(0.4, 0.4, 0.4, 0.4))
 persp3D(e1,e2,beta_e_variable_true, colvar = beta_e_variable_true,theta=30,
         phi=40,axes= TRUE,scale=2, box=TRUE, nticks=5,
@@ -511,18 +631,18 @@ persp3D(s1,s2,beta_s_grid, colvar = beta_s_grid,theta=30,
         bty = "g",
         main=expression(paste(beta["1S, EMGWR"]))
 )
+dev.off()
 
-
-## Computation of R^2_{adj} ---------------------------------------
-I= diag(1,n_sample)
+## Computation of R^2_{adj} ----------------------------------------------------------------------
+I= diag(1,N)
 B = esc$B
 Xcc = cbind(rep(1,dim(X_sim)[1]), X_sim$Xc_var)
 H_esc = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
 res = (I-H_esc)%*%y_sim_c
-delta1 = n_sample-2*tr(H_esc)+tr(t(H_esc)%*%H_esc)
+delta1 = N-2*tr(H_esc)+tr(t(H_esc)%*%H_esc)
 rss = sum(res^2)
 sigma2hat = rss/delta1
 tss = sum((H_esc%*%y_sim_c-mean(y_sim_c))^2)
 R2 = 1-rss/tss
-R2adj = 1-(1-R2)*(n_sample-1)/delta1
+R2adj = 1-(1-R2)*(N-1)/delta1
 R2adj

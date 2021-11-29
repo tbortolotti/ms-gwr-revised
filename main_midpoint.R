@@ -75,8 +75,8 @@ bw_best = which(bw_table == min(bw_table), arr.ind = T)
 bwm = bwm_tot[bw_best[1]]
 bws = bws_tot[bw_best[2]]
 
-#bwm = 25000
-#bws = 75000
+bwm = 25000
+bws = 75000
 
 ## PERMUTATION TESTS -----------------------------------------------------------
 ## Joint test for the stationarity of the coefficients --------------------
@@ -287,7 +287,6 @@ Xcc = cbind(rep(1,N), Xc)
 H = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
 epsilon= (I-H)%*%y
 delta1 = N-2*tr(H)+tr(t(H)%*%H)
-delta2 = tr((t(I-H)%*%(I-H)) %*% (t(I-H)%*%(I-H)))
 rss = sum(epsilon^2)
 sigma2hat = rss/delta1
 tss = sum((H%*%y-mean(y))^2)
@@ -399,6 +398,8 @@ range(beta_c3)
 ## PLOTS ---------------------------------------------------------
 load("data_dir/spacial_info_plots.RData")
 load("data_dir/utm_coordinates.RData")
+
+
 # Plots of non-stationary regression coefficients
 ## k
 beta_k_bis = beta_k
@@ -455,8 +456,8 @@ ggplot() +
                        ,limits = c(-2, -1), breaks = c(-2, -1.5, -1),
                        labels = c(-2, -1.5, -1))+
   geom_sf(data = shape_utm_no_lamp, size = 1.6, color = "black", fill = NA)+
-  geom_point(data = utm_ev, aes(x=longitude_ev, y=latitude_ev), fill= 'firebrick3',
-             size = 3, shape = 21, stroke = 1.5)+
+  geom_point(data = utm_md, aes(x=longitude_ev, y=latitude_ev), fill= 'firebrick3',
+             size = 1, shape = 21, stroke = 0.7)+
   ggtitle("Midpoint") +
   theme(axis.text=element_text(size=15, colour = "black"),
         axis.title=element_blank(),
@@ -496,8 +497,8 @@ ggplot() +
                        , limits = c(-0.01, 0.005), breaks = c(-0.01, -0.005, 0, 0.005),
                        labels = c(-0.01, -0.005, 0, 0.005)) +
   geom_sf(data = shape_utm_no_lamp, size = 1.6, color = "black", fill = NA)+
-  geom_point(data = utm_ev, aes(x=longitude_ev, y=latitude_ev), fill= 'firebrick3',
-             size = 3, shape = 21, stroke = 1.5)+
+  geom_point(data = utm_md, aes(x=longitude_ev, y=latitude_ev), fill= 'firebrick3',
+             size = 1, shape = 21, stroke = 0.7)+
   ggtitle("Midpoint")+
   theme(axis.text=element_text(size=15, colour = "black"),
         axis.title=element_blank(),
