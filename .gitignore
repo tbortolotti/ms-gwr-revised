@@ -7,6 +7,11 @@ bw_table.RData
 check_bandwidth_impact.R
 
 msgwr_seismological_data_notebook.Rmd
+bandwidth_impact_1step.R
+bandwidth_impact_2step.R
+bandwidth_impact_1step_ev.R
+bandwidth_impact_2step_ev.R
+main_plots.R
 
 functions/bw_cv
 functions/ESC_only_calibration
