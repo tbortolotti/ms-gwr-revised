@@ -22,6 +22,24 @@ rm(list=ls())
 graphics.off()
 cat("\014")
 
+## General comment to the code -------------------------------------------------------
+## This code is optimized for the calibration of a MS-GWR on large datasets.
+## In order to reduce the number of calibrations and of testing performed on such datasets, results are saved in
+## appropriately allocated folders. The practitioner automatically creates such folders in its working directory,
+## just by running this script.
+
+## Create the directories to save results and partial results of the analysis
+current.dir = getwd()
+new.dir = paste0(current.dir,"/benchmark")
+dir.create(new.dir)
+
+new.dir.matrices = paste0(new.dir,"/large_matrices")
+dir.create(new.dir.matrices)
+
+new.dir.pvals = paste0(new.dir,"/pvals")
+dir.create(new.dir.pvals)
+
+
 ## Load -------------------------------------------------
 # Load coordinates data and regressors (SEE file data_preparation.R)
 load("data_dir/utm_coordinates.RData")
@@ -107,7 +125,7 @@ only_intercept = SEC_calibration(Xc        = Xc,
                                  bw2       = bws,
                                  utm_1_sp  = coordinates(utm_ev_sp),
                                  utm_2_sp  = coordinates(utm_st_sp),
-                                 model     = "new_benchmark",
+                                 model     = "benchmark",
                                  test      = "only_constant_intercept")
 End.Time <- Sys.time()
 round(End.Time - Start.Time, 2)
@@ -123,7 +141,7 @@ B = only_intercept$B
 Xcc = rep(1,N)
 H1 = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
 RH1 = t(I-H1)%*%(I-H1)
-save(RH1, file="new_benchmark/large_matrices/RH1_only_intercept_rotD50pga.RData")
+save(RH1, file="benchmark/large_matrices/RH1_only_intercept_rotD50pga.RData")
 
 #compute T
 T0 = (t(y) %*% (RH0-RH1) %*% y) / (t(y) %*% RH1 %*% y)
@@ -141,7 +159,7 @@ for (i in 1:n_perm){
 }
 p = sum(t_stat>as.numeric(T0))/n_perm
 p
-save(p, file="new_benchmark/pvals/model_stationarity.RData")
+save(p, file="benchmark/pvals/model_stationarity.RData")
 
 ## One-at-a-time test for the stationarity of coefficients ---------------------------
 source("functions/stationarity_check.R")
@@ -164,9 +182,9 @@ p = stationarity_check(n_coef_to_check = n_coef_to_check,
                        bw2             = bws,
                        utm_1_sp        = utm_ev_sp,
                        utm_2_sp        = utm_st_sp,
-                       model           = "new_benchmark")
+                       model           = "benchmark")
 p
-save(p, file=paste0("new_benchmark/pvals/stationarity_",n_coef_to_check,".RData"))
+save(p, file=paste0("benchmark/pvals/stationarity_",n_coef_to_check,".RData"))
 End.Time <- Sys.time()
 round(End.Time - Start.Time, 2)
 ## Joint test for the stationarity of coefs found stationary -----------------------------------------------------------------------
@@ -189,7 +207,7 @@ B = sec$B
 Xcc = cbind(rep(1,N), Xc)
 H0 = I - B + B %*% Xcc %*% solve(t(Xcc)%*%t(B)%*%B%*%Xcc) %*% t(Xcc) %*% t(B)%*% B
 RH1 = t(I-H0)%*%(I-H0)
-save(RH1, file="new_benchmark/large_matrices/RH1_stationary_rotD50pga.RData")
+save(RH1, file="benchmark/large_matrices/RH1_stationary_rotD50pga.RData")
 T0 = (t(y) %*% (RH0-RH1) %*% y) / (t(y) %*% RH1 %*% y)
 #permutations
 n_perm = 1000
@@ -205,7 +223,7 @@ for (i in 1:n_perm){
 }
 p = sum(t_stat>as.numeric(T0))/n_perm
 p
-save(p, file="new_benchmark/pvals/joint_stationarity.RData")
+save(p, file="benchmark/pvals/joint_stationarity.RData")
 
 ## One-at-a-time test for significance of constant coefficients ------------------------------------------
 # H0: a constant coefficient is null
@@ -238,7 +256,7 @@ p = significance_check(coef_to_check = coef_to_check,
                        utm_2_sp      = utm_st_sp,
                        model         = "benchmark")
 p
-save(p, file=paste0("new_benchmark/pvals/significance_",coef_to_check,".RData"))
+save(p, file=paste0("benchmark/pvals/significance_",coef_to_check,".RData"))
 End.Time <- Sys.time()
 round(End.Time - Start.Time, 2)
 
@@ -272,7 +290,7 @@ sec = SEC_calibration(Xc        = Xc,
                       bw2       = bws,
                       utm_1_sp  = coordinates(utm_ev_sp),
                       utm_2_sp  = coordinates(utm_st_sp),
-                      model     = "new_benchmark",
+                      model     = "benchmark",
                       test      = "full_computation")
 End.Time <- Sys.time()
 round(End.Time - Start.Time, 2)
@@ -312,10 +330,10 @@ result = SEC_grid_creation(Xc        = Xc,
                            utm_1_sp  = coordinates(utm_ev_sp),
                            utm_2_sp  = coordinates(utm_st_sp),
                            grid      = coords_utm,
-                           model     = "new_benchmark")
+                           model     = "benchmark")
 End.Time <- Sys.time()
 round(End.Time - Start.Time, 2)
-save(result, file="new_benchmark/large_matrices/SEC_grid_creation_all.RData")
+save(result, file="benchmark/large_matrices/SEC_grid_creation_all.RData")
 
 beta_const = result$beta_c
 
@@ -356,9 +374,9 @@ result_c1 = SEC_grid_creation(Xc        = Xc,
                               utm_ev_sp = utm_ev_include,
                               utm_st_sp = utm_st_include,
                               grid      = utm_st_include,
-                              model     = "new_benchmark")
+                              model     = "benchmark")
 
-save(result_c1, file="new_benchmark/large_matrices/SEC_grid_creation_c1.RData")
+save(result_c1, file="benchmark/large_matrices/SEC_grid_creation_c1.RData")
 
 # 2. Computation of all other regression coefficients
 #    Remove c1*(Mw-Mref)*log10(RJB) from PGA and calibrate again
@@ -380,10 +398,10 @@ result = SEC_grid_creation(Xc        = Xc,
                            utm_ev_sp = coordinates(utm_ev_sp),
                            utm_st_sp = coordinates(utm_st_sp),
                            grid      = coords_utm,
-                           model     = "new_benchmark")
-save(result, file="new_benchmark/large_matrices/SEC_grid_creation_others.RData")
+                           model     = "benchmark")
+save(result, file="benchmark/large_matrices/SEC_grid_creation_others.RData")
 
-load("new_benchmark/large_matrices/SEC_grid_creation_all.RData")
+load("benchmark/large_matrices/SEC_grid_creation_all.RData")
 
 beta_const = result$beta_c
 
@@ -406,6 +424,12 @@ range(beta_c3)
 # Plots of non-stationary regression coefficients
 load("data_dir/spacial_info_plots.RData")
 load("data_dir/utm_coordinates.RData")
+
+## Create directory to save images of the coefficients estimates
+new.dir.imgs = paste0(new.dir,"/coefs_estimates")
+dir.create(new.dir.imgs)
+
+
 ## k
 beta_k_bis = beta_k
 beta_k_bis[beta_k_bis<(-1)]=-1
@@ -437,7 +461,7 @@ ggplot() +
 ggsave(filename = "k.png",
        plot = last_plot(),
        device = NULL,
-       path = "new_benchmark/coefs_estimates",
+       path = "benchmark/coefs_estimates",
        scale = 1,
        limitsize = FALSE,
        dpi = 320)
@@ -477,7 +501,7 @@ ggplot() +
 ggsave(filename = "c2.png",
        plot = last_plot(),
        device = NULL,
-       path = "new_benchmark/coefs_estimates",
+       path = "benchmark/coefs_estimates",
        scale = 1,
        limitsize = FALSE,
        dpi = 320)
@@ -519,7 +543,7 @@ ggplot() +
 ggsave(filename = "c3.png",
        plot = last_plot(),
        device = NULL,
-       path = "new_benchmark/coefs_estimates",
+       path = "benchmark/coefs_estimates",
        scale = 1,
        limitsize = FALSE,
        dpi = 320)

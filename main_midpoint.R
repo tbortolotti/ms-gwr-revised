@@ -22,6 +22,23 @@ rm(list=ls())
 graphics.off()
 cat("\014")
 
+## General comment to the code -------------------------------------------------------
+## This code is optimized for the calibration of a MS-GWR on large datasets.
+## In order to reduce the number of calibrations and of testing performed on such datasets, results are saved in
+## appropriately allocated folders. The practitioner automatically creates such folders in its working directory,
+## just by running this script.
+
+## Create the directories to save results and partial results of the analysis
+current.dir = getwd()
+new.dir = paste0(current.dir,"/midpoint")
+dir.create(new.dir)
+
+new.dir.matrices = paste0(new.dir,"/large_matrices")
+dir.create(new.dir.matrices)
+
+new.dir.pvals = paste0(new.dir,"/pvals")
+dir.create(new.dir.pvals)
+
 ## Load -------------------------------------------------
 # Load coordinates data and regressors (SEE file data_preparation.R)
 load("data_dir/utm_coordinates.RData")
@@ -399,6 +416,9 @@ range(beta_c3)
 load("data_dir/spacial_info_plots.RData")
 load("data_dir/utm_coordinates.RData")
 
+## Create directory to save images of the coefficients estimates
+new.dir.imgs = paste0(new.dir,"/coefs_estimates")
+dir.create(new.dir.imgs)
 
 # Plots of non-stationary regression coefficients
 ## k
