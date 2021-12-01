@@ -52,6 +52,7 @@ may be sketched as follows:
 6. Full calibration of the model and computation of the regression coefficients over a spatial grid of interest.
 
 The simulation study explores the performances of MS GWR with particular regard to estimation and prediction accuracy when changing (i) the order of estimation (ESC, SEC, CES, ..) and (ii) the bandwidth of the spatial kernels involved in the GWR estimates. Stationary, station-dependent and event-dependent coefficients are generated and then the procedure displayed above is deployed to obtain their MS GWR estimates.
+
 ![alt text](https://github.com/tbortolotti/ms-gwr-revised/blob/main/plots/simulation/coefficient_estimates.png)
 
 ## Analysis of Italian seismic data
